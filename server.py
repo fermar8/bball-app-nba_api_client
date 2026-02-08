@@ -48,7 +48,15 @@ def get_schedule():
         
         # Initialize the ScheduleLeagueV2 endpoint
         if season:
-            schedule = ScheduleLeagueV2(season=f"{season}-{str(int(season) + 1)[-2:]}")
+            try:
+                # Validate season is a valid year
+                year = int(season)
+                schedule = ScheduleLeagueV2(season=f"{year}-{str(year + 1)[-2:]}")
+            except ValueError:
+                return jsonify({
+                    'success': False,
+                    'error': 'Invalid season parameter. Must be a valid year (e.g., 2023)'
+                }), 400
         else:
             schedule = ScheduleLeagueV2()
         

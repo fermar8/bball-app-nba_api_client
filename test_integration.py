@@ -4,6 +4,7 @@ This script demonstrates that the server correctly imports and uses the nba_api 
 """
 
 from nba_api.stats.endpoints import ScheduleLeagueV2
+from server import app
 
 # Test 1: Verify that ScheduleLeagueV2 can be imported
 print("✓ Test 1 Passed: Successfully imported ScheduleLeagueV2 from nba_api")
@@ -23,25 +24,17 @@ except Exception as e:
     print(f"✗ Test 3 Failed: {e}")
 
 # Test 4: Test server imports
-try:
-    from server import app
-    print("✓ Test 4 Passed: Successfully imported Flask app from server.py")
-except Exception as e:
-    print(f"✗ Test 4 Failed: {e}")
+print("✓ Test 4 Passed: Successfully imported Flask app from server.py")
 
 # Test 5: Verify Flask routes are configured
-try:
-    from server import app
-    routes = [rule.rule for rule in app.url_map.iter_rules()]
-    expected_routes = ['/', '/health', '/schedule']
-    
-    for route in expected_routes:
-        if route in routes:
-            print(f"✓ Test 5.{expected_routes.index(route) + 1} Passed: Route '{route}' is configured")
-        else:
-            print(f"✗ Test 5.{expected_routes.index(route) + 1} Failed: Route '{route}' is not configured")
-except Exception as e:
-    print(f"✗ Test 5 Failed: {e}")
+routes = [rule.rule for rule in app.url_map.iter_rules()]
+expected_routes = ['/', '/health', '/schedule']
+
+for route in expected_routes:
+    if route in routes:
+        print(f"✓ Test 5.{expected_routes.index(route) + 1} Passed: Route '{route}' is configured")
+    else:
+        print(f"✗ Test 5.{expected_routes.index(route) + 1} Failed: Route '{route}' is not configured")
 
 print("\n" + "="*50)
 print("All integration tests completed!")

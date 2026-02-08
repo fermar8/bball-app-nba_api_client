@@ -85,10 +85,11 @@ curl http://localhost:5000/schedule?season=2023
 
 ```
 bball-app-nba_api_client/
-├── server.py           # Main Flask application
-├── requirements.txt    # Python dependencies
-├── README.md          # This file
-└── .gitignore         # Git ignore rules
+├── server.py              # Main Flask application
+├── requirements.txt       # Python dependencies
+├── test_integration.py    # Integration tests
+├── README.md             # This file
+└── .gitignore            # Git ignore rules
 ```
 
 ## Contributing
