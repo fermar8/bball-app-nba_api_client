@@ -76,4 +76,8 @@ def get_schedule():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Debug mode is disabled by default for security
+    # Enable only in development by setting environment variable: FLASK_DEBUG=1
+    import os
+    debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)

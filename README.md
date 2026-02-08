@@ -39,6 +39,13 @@ python server.py
 
 The server will start on `http://localhost:5000`
 
+**Development Mode**: To enable debug mode during development:
+```bash
+FLASK_DEBUG=1 python server.py
+```
+
+> **Note**: Debug mode should NEVER be enabled in production as it poses security risks.
+
 ### Available Endpoints
 
 #### 1. Root Endpoint
