@@ -209,7 +209,7 @@ if new_game_completed():
         update_player_stats(playerId, gameId)  # Bulk write stats
 ```
 
-**Future optimization**: Currently the exploration uses fixed dates for simplicity; in production this will switch to dynamic `datetime`-based windows (e.g. compute `date_from`/`date_to` daily and pass them to `PlayerGameLogs(date_from_nullable=..., date_to_nullable=...)`) to avoid full-season re-fetches. Example: at 02:00 UTC set `date_from = today - 2 days`, `date_to = today` to capture late games and backfills; skip the call entirely when no games were played the previous day.
+**Future optimization**: The current exploration script uses a single-player, full-season call (simple demo). In production (DEV-X) this will switch to dynamic `datetime`-based windows, e.g. compute `date_from`/`date_to` daily and pass them to `PlayerGameLogs(date_from_nullable=..., date_to_nullable=...)`, to avoid full-season re-fetches. Example: at 02:00 UTC set `date_from = today - 2 days`, `date_to = today` to capture late games and backfills; skip the call entirely when no games were played the previous day.
 
 ---
 
