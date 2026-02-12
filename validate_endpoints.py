@@ -1,7 +1,10 @@
 """
 Validation Script for NBA API Endpoints
-Purpose: Compare actual API responses with GAME_ENDPOINTS.md specifications
+Purpose: Verify filtered data contains ONLY essential fields per GAME_ENDPOINTS.md
 Author: DEV-17 - Data Validation
+
+IMPORTANT: This script validates that field filtering is working correctly.
+All sample files should contain ONLY essential fields (no extras).
 """
 
 import json
@@ -72,7 +75,7 @@ EXPECTED_FIELDS = {
 }
 
 def validate_endpoint(endpoint_name, expected_fields, file_path, nested_fields=None):
-    """Validate that actual data contains expected fields"""
+    """Validate that filtered data contains ONLY essential fields (no extras)"""
     print(f"\n{'='*70}")
     print(f"📋 Validating: {endpoint_name}")
     print(f"{'='*70}")
@@ -107,11 +110,16 @@ def validate_endpoint(endpoint_name, expected_fields, file_path, nested_fields=N
                 print(f"   ✅ Expected fields present: {len(present)}/{len(expected)}")
                 
                 if missing:
-                    print(f"   ⚠️  Missing fields: {', '.join(sorted(missing))}")
+                    print(f"   ❌ Missing essential fields: {', '.join(sorted(missing))}")
                 if extra:
-                    print(f"   ℹ️  Extra fields (not essential): {len(extra)}")
+                    print(f"   ❌ EXTRA FIELDS FOUND (should be filtered out): {', '.join(sorted(extra))}")
+                    print(f"      Filtering is NOT working correctly!")
+                
+                if not missing and not extra:
+                    print(f"   ✅ Perfectly filtered! Only essential fields present.")
             
-            return all(not v['missing'] for v in validation_results.values())
+            # Must have all essential fields AND no extras
+            return all(not v['missing'] and not v['extra'] for v in validation_results.values())
         
         else:
             # Regular list structure
@@ -126,6 +134,7 @@ def validate_endpoint(endpoint_name, expected_fields, file_path, nested_fields=N
             
             # Check nested fields if specified
             nested_missing = []
+            nested_extra = []
             if nested_fields:
                 for parent_field, child_fields in nested_fields.items():
                     if parent_field in sample_item:
@@ -134,28 +143,35 @@ def validate_endpoint(endpoint_name, expected_fields, file_path, nested_fields=N
                             nested_actual = set(nested_obj.keys())
                             nested_expected = set(child_fields)
                             nested_missing.extend([f"{parent_field}.{f}" for f in (nested_expected - nested_actual)])
+                            nested_extra.extend([f"{parent_field}.{f}" for f in (nested_actual - nested_expected)])
             
             missing = expected - actual_fields
             extra = actual_fields - expected
             present = expected & actual_fields
             
             print(f"\n📊 Field Analysis:")
-            print(f"   Total fields in response: {len(actual_fields)}")
+            print(f"   Total fields in filtered file: {len(actual_fields)}")
             print(f"   Essential fields expected: {len(expected)}")
             print(f"   ✅ Essential fields present: {len(present)}/{len(expected)}")
             
             if missing or nested_missing:
-                print(f"\n   ⚠️  MISSING ESSENTIAL FIELDS:")
+                print(f"\n   ❌ MISSING ESSENTIAL FIELDS:")
                 for field in sorted(missing):
                     print(f"      - {field}")
                 for field in sorted(nested_missing):
                     print(f"      - {field}")
-            else:
-                print(f"   ✅ All essential fields present!")
             
-            if extra:
-                print(f"\n   ℹ️  Additional fields (not marked as essential): {len(extra)}")
-                print(f"      These could be filtered out to save storage costs")
+            if extra or nested_extra:
+                print(f"\n   ❌ EXTRA FIELDS FOUND (should be filtered out): {len(extra) + len(nested_extra)}")
+                for field in sorted(extra):
+                    print(f"      - {field}")
+                for field in sorted(nested_extra):
+                    print(f"      - {field}")
+                print(f"      🔍 Filtering is NOT working correctly for this endpoint!")
+            
+            if not missing and not extra and not nested_missing and not nested_extra:
+                print(f"\n   ✅ Perfectly filtered! Only essential fields present.")
+                print(f"      Storage optimized: {len(actual_fields)} fields (no waste)")
             
             # Show sample data
             print(f"\n📝 Sample Data Preview:")
@@ -168,7 +184,8 @@ def validate_endpoint(endpoint_name, expected_fields, file_path, nested_fields=N
                     else:
                         print(f"   {field}: {value}")
             
-            return len(missing) == 0 and len(nested_missing) == 0
+            # Must have all essential fields AND no extras (strict validation)
+            return len(missing) == 0 and len(nested_missing) == 0 and len(extra) == 0 and len(nested_extra) == 0
     
     except Exception as e:
         print(f"❌ Error validating {endpoint_name}: {e}")
@@ -178,7 +195,8 @@ def main():
     print("="*70)
     print("🔍 NBA API ENDPOINT VALIDATION")
     print("="*70)
-    print("\nComparing actual API responses with GAME_ENDPOINTS.md specifications...")
+    print("\nVerifying filtered data contains ONLY essential fields...")
+    print("(No missing fields, no extra fields - perfect filtering)\n")
     
     results = {}
     
@@ -205,11 +223,16 @@ def main():
     print(f"\n📈 Overall: {passed}/{total} endpoints validated successfully")
     
     if passed == total:
-        print("\n🎉 All endpoints match GAME_ENDPOINTS.md specifications!")
-        print("   You can proceed with designing the DynamoDB schema.")
+        print("\n🎉 Perfect! All endpoints properly filtered!")
+        print("   ✅ Only essential fields present (no waste)")
+        print("   ✅ All required fields included (no missing data)")
+        print("   ✅ Field filtering working correctly")
+        print("\n   Ready for DynamoDB implementation with optimized storage!")
     else:
-        print("\n⚠️  Some endpoints have missing fields.")
-        print("   Review the documentation or update GAME_ENDPOINTS.md")
+        print("\n❌ Validation failed - filtering issues detected:")
+        print("   • Check explore_endpoints.py filtering functions")
+        print("   • Verify essential field lists match GAME_ENDPOINTS.md")
+        print("   • Re-run exploration after fixes")
     
     return passed == total
 
