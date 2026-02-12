@@ -1,0 +1,199 @@
+"""
+Validation Script for NBA API Endpoints
+Purpose: Compare actual API responses with GAME_ENDPOINTS.md specifications
+Author: DEV-17 - Data Validation
+"""
+
+import json
+import os
+
+# Expected fields from GAME_ENDPOINTS.md
+EXPECTED_FIELDS = {
+    "ScheduleLeagueV2": {
+        "essential": [
+            "gameId", "gameDate", "gameDateTimeEst", "gameStatus", "gameStatusText",
+            "homeTeam_teamId", "homeTeam_teamName", "homeTeam_teamTricode",
+            "homeTeam_wins", "homeTeam_losses", "homeTeam_score",
+            "awayTeam_teamId", "awayTeam_teamName", "awayTeam_teamTricode",
+            "awayTeam_wins", "awayTeam_losses", "awayTeam_score",
+            "arenaName", "arenaCity", "arenaState"
+        ],
+        "file": "exploration_output/schedule_sample.json"
+    },
+    "PlayerIndex": {
+        "essential": [
+            "PERSON_ID", "PLAYER_FIRST_NAME", "PLAYER_LAST_NAME",
+            "TEAM_ID", "TEAM_NAME", "TEAM_ABBREVIATION",
+            "JERSEY_NUMBER", "POSITION", "HEIGHT", "WEIGHT",
+            "COUNTRY", "COLLEGE", "DRAFT_YEAR", "DRAFT_ROUND", "DRAFT_NUMBER",
+            "ROSTER_STATUS", "FROM_YEAR", "TO_YEAR"
+        ],
+        "file": "exploration_output/players_lakers_sample.json"
+    },
+    "Teams": {
+        "essential": [
+            "id", "full_name", "abbreviation", "nickname",
+            "city", "state", "year_founded"
+        ],
+        "file": "exploration_output/teams_all.json"
+    },
+    "PlayerGameLogs": {
+        "essential": [
+            "PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "TEAM_ABBREVIATION",
+            "GAME_ID", "GAME_DATE", "MATCHUP", "WL", "MIN",
+            "FGM", "FGA", "FG_PCT", "FG3M", "FG3A", "FG3_PCT",
+            "FTM", "FTA", "FT_PCT", "OREB", "DREB", "REB",
+            "AST", "STL", "BLK", "BLKA", "TOV", "PF", "PFD", "PTS"
+        ],
+        "file": "exploration_output/player_gamelogs_sample.json"
+    },
+    "PlayerNextNGames": {
+        "essential": [
+            "GAME_ID", "GAME_DATE", "GAME_TIME",
+            "HOME_TEAM_ID", "HOME_TEAM_NAME", "HOME_TEAM_ABBREVIATION", "HOME_WL",
+            "VISITOR_TEAM_ID", "VISITOR_TEAM_NAME", "VISITOR_TEAM_ABBREVIATION", "VISITOR_WL"
+        ],
+        "file": "exploration_output/player_nextgames_sample.json"
+    },
+    "TeamInfoCommon": {
+        "essential": {
+            "team_info": [
+                "TEAM_ID", "SEASON_YEAR", "TEAM_CITY", "TEAM_NAME", "TEAM_ABBREVIATION",
+                "TEAM_CONFERENCE", "TEAM_DIVISION", "W", "L", "PCT", "CONF_RANK", "DIV_RANK"
+            ],
+            "season_ranks": [
+                "PTS_RANK", "PTS_PG", "REB_RANK", "REB_PG",
+                "AST_RANK", "AST_PG", "OPP_PTS_RANK", "OPP_PTS_PG"
+            ]
+        },
+        "file": "exploration_output/team_info_sample.json"
+    }
+}
+
+def validate_endpoint(endpoint_name, expected_fields, file_path):
+    """Validate that actual data contains expected fields"""
+    print(f"\n{'='*70}")
+    print(f"📋 Validating: {endpoint_name}")
+    print(f"{'='*70}")
+    
+    if not os.path.exists(file_path):
+        print(f"❌ File not found: {file_path}")
+        return False
+    
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Handle different data structures
+        if endpoint_name == "TeamInfoCommon":
+            # Special case: nested structure
+            validation_results = {}
+            for dataset_name, fields in expected_fields.items():
+                actual_fields = set(data.get(dataset_name, {}).keys())
+                expected = set(fields)
+                
+                missing = expected - actual_fields
+                extra = actual_fields - expected
+                present = expected & actual_fields
+                
+                validation_results[dataset_name] = {
+                    'missing': missing,
+                    'extra': extra,
+                    'present': present
+                }
+                
+                print(f"\n🔍 Dataset: {dataset_name}")
+                print(f"   ✅ Expected fields present: {len(present)}/{len(expected)}")
+                
+                if missing:
+                    print(f"   ⚠️  Missing fields: {', '.join(sorted(missing))}")
+                if extra:
+                    print(f"   ℹ️  Extra fields (not essential): {len(extra)}")
+            
+            return all(not v['missing'] for v in validation_results.values())
+        
+        else:
+            # Regular list structure
+            if not data:
+                print("❌ No data found in file")
+                return False
+            
+            # Get fields from first item
+            sample_item = data[0] if isinstance(data, list) else data
+            actual_fields = set(sample_item.keys())
+            expected = set(expected_fields)
+            
+            missing = expected - actual_fields
+            extra = actual_fields - expected
+            present = expected & actual_fields
+            
+            print(f"\n📊 Field Analysis:")
+            print(f"   Total fields in response: {len(actual_fields)}")
+            print(f"   Essential fields expected: {len(expected)}")
+            print(f"   ✅ Essential fields present: {len(present)}/{len(expected)}")
+            
+            if missing:
+                print(f"\n   ⚠️  MISSING ESSENTIAL FIELDS:")
+                for field in sorted(missing):
+                    print(f"      - {field}")
+            else:
+                print(f"   ✅ All essential fields present!")
+            
+            if extra:
+                print(f"\n   ℹ️  Additional fields (not marked as essential): {len(extra)}")
+                print(f"      These could be filtered out to save storage costs")
+            
+            # Show sample data
+            print(f"\n📝 Sample Data Preview:")
+            for field in list(expected)[:5]:
+                if field in sample_item:
+                    value = sample_item[field]
+                    print(f"   {field}: {value}")
+            
+            return len(missing) == 0
+    
+    except Exception as e:
+        print(f"❌ Error validating {endpoint_name}: {e}")
+        return False
+
+def main():
+    print("="*70)
+    print("🔍 NBA API ENDPOINT VALIDATION")
+    print("="*70)
+    print("\nComparing actual API responses with GAME_ENDPOINTS.md specifications...")
+    
+    results = {}
+    
+    # Validate each endpoint
+    for endpoint_name, config in EXPECTED_FIELDS.items():
+        expected = config["essential"]
+        file_path = config["file"]
+        
+        results[endpoint_name] = validate_endpoint(endpoint_name, expected, file_path)
+    
+    # Summary
+    print("\n" + "="*70)
+    print("📊 VALIDATION SUMMARY")
+    print("="*70)
+    
+    total = len(results)
+    passed = sum(results.values())
+    
+    for endpoint, passed_validation in results.items():
+        status = "✅ PASS" if passed_validation else "❌ FAIL"
+        print(f"{status} - {endpoint}")
+    
+    print(f"\n📈 Overall: {passed}/{total} endpoints validated successfully")
+    
+    if passed == total:
+        print("\n🎉 All endpoints match GAME_ENDPOINTS.md specifications!")
+        print("   You can proceed with designing the DynamoDB schema.")
+    else:
+        print("\n⚠️  Some endpoints have missing fields.")
+        print("   Review the documentation or update GAME_ENDPOINTS.md")
+    
+    return passed == total
+
+if __name__ == "__main__":
+    success = main()
+    exit(0 if success else 1)
