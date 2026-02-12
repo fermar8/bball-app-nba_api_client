@@ -1,4 +1,4 @@
-# NBA API Endpoints for Fantasy Basketball Game
+t# NBA API Endpoints for Fantasy Basketball Game
 
 This document describes the NBA API endpoints required to build a fantasy basketball game, organized by dependency chain and optimized for cost-effective data storage.
 
@@ -54,28 +54,27 @@ These endpoints can be fetched immediately without parameters and provide the fo
 - **Optional Parameters**:
   - `league_id` (default: "00" for NBA)
 
-**Essential Fields** (from `SeasonGames` dataset):
+**Essential Fields** (from schedule response):
 
 - `gameId` - **ID FIELD** → Used for BoxScore endpoints (future)
-- `gameDate` - Game date
+- `gameDateEst` - Game date (EST format)
 - `gameDateTimeEst` - Game date and time (EST)
 - `gameStatus` - Game status code (1=scheduled, 2=live, 3=final)
 - `gameStatusText` - Human-readable status
-- `homeTeam_teamId` - Home team ID
-- `homeTeam_teamName` - Home team name
-- `homeTeam_teamTricode` - Home team abbreviation (e.g., "LAL")
-- `homeTeam_wins` - Home team win count
-- `homeTeam_losses` - Home team loss count
-- `homeTeam_score` - Home team score (if game completed)
-- `awayTeam_teamId` - Away team ID
-- `awayTeam_teamName` - Away team name
-- `awayTeam_teamTricode` - Away team abbreviation
-- `awayTeam_wins` - Away team win count
-- `awayTeam_losses` - Away team loss count
-- `awayTeam_score` - Away team score (if game completed)
+- `homeTeam.teamId` - Home team ID
+- `homeTeam.teamName` - Home team name
+- `homeTeam.teamTricode` - Home team abbreviation (e.g., "LAL")
+- `homeTeam.wins` - Home team win count
+- `homeTeam.losses` - Home team loss count
+- `homeTeam.score` - Home team score (if game completed)
+- `awayTeam.teamId` - Away team ID
+- `awayTeam.teamName` - Away team name
+- `awayTeam.teamTricode` - Away team abbreviation
+- `awayTeam.wins` - Away team win count
+- `awayTeam.losses` - Away team loss count
+- `awayTeam.score` - Away team score (if game completed)
 - `arenaName` - Arena name
 - `arenaCity` - Arena city
-- `arenaState` - Arena state
 
 **Fields to Filter Out**:
 

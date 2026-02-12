@@ -33,43 +33,46 @@ print("1️⃣  ScheduleLeagueV2 - Game schedule")
 print("-" * 70)
 
 try:
-    # Get current season schedule (2025-26)
-    schedule = ScheduleLeagueV2(season="2025-26")
+    # Get current season schedule (2025-26) - use default (no season param)
+    schedule = ScheduleLeagueV2()
     schedule_data = schedule.get_dict()
     
     # Save full response
     with open(f"{output_dir}/schedule_full_response.json", "w", encoding="utf-8") as f:
         json.dump(schedule_data, f, indent=2, ensure_ascii=False)
     
-    # Analyze data
-    result_sets = schedule_data.get('resultSets', [])
-    if result_sets:
-        games_data = result_sets[0]  # SeasonGames dataset
-        headers = games_data.get('headers', [])
-        rows = games_data.get('rowSet', [])
+    # Analyze data - new API format uses leagueSchedule
+    league_schedule = schedule_data.get('leagueSchedule', {})
+    game_dates = league_schedule.get('gameDates', [])
+    
+    # Flatten all games from all dates
+    all_games = []
+    for date_obj in game_dates:
+        all_games.extend(date_obj.get('games', []))
+    
+    if all_games:
+        # Get field names from first game
+        sample_game = all_games[0]
+        field_names = list(sample_game.keys())
         
-        print(f"✅ Total games in season: {len(rows)}")
-        print(f"✅ Available fields: {len(headers)}")
+        print(f"✅ Total games in season: {len(all_games)}")
+        print(f"✅ Available fields: {len(field_names)}")
         print(f"\n📋 Sample available fields:")
-        for i, header in enumerate(headers[:15]):
-            print(f"   {i+1}. {header}")
+        for i, field in enumerate(field_names[:15]):
+            print(f"   {i+1}. {field}")
         
         # Show 3 sample games
         print(f"\n🎮 Sample of 3 games:")
-        for i, game in enumerate(rows[:3]):
-            game_dict = dict(zip(headers, game))
+        for i, game in enumerate(all_games[:3]):
             print(f"\n   Game {i+1}:")
-            print(f"   - Game ID: {game_dict.get('gameId', 'N/A')}")
-            print(f"   - Date: {game_dict.get('gameDate', 'N/A')}")
-            print(f"   - Home: {game_dict.get('homeTeam_teamName', 'N/A')} ({game_dict.get('homeTeam_score', 'N/A')} pts)")
-            print(f"   - Away: {game_dict.get('awayTeam_teamName', 'N/A')} ({game_dict.get('awayTeam_score', 'N/A')} pts)")
-            print(f"   - Status: {game_dict.get('gameStatusText', 'N/A')}")
+            print(f"   - Game ID: {game.get('gameId', 'N/A')}")
+            print(f"   - Date: {game.get('gameDateTimeEst', game.get('gameDate', 'N/A'))}")
+            print(f"   - Home: {game.get('homeTeam', {}).get('teamName', 'N/A')} ({game.get('homeTeam', {}).get('score', 'N/A')} pts)")
+            print(f"   - Away: {game.get('awayTeam', {}).get('teamName', 'N/A')} ({game.get('awayTeam', {}).get('score', 'N/A')} pts)")
+            print(f"   - Status: {game.get('gameStatusText', 'N/A')}")
         
         # Save simplified version
-        simplified_games = []
-        for game in rows[:10]:
-            game_dict = dict(zip(headers, game))
-            simplified_games.append(game_dict)
+        simplified_games = all_games[:10]
         
         with open(f"{output_dir}/schedule_sample.json", "w", encoding="utf-8") as f:
             json.dump(simplified_games, f, indent=2, ensure_ascii=False)

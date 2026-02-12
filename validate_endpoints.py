@@ -11,13 +11,14 @@ import os
 EXPECTED_FIELDS = {
     "ScheduleLeagueV2": {
         "essential": [
-            "gameId", "gameDate", "gameDateTimeEst", "gameStatus", "gameStatusText",
-            "homeTeam_teamId", "homeTeam_teamName", "homeTeam_teamTricode",
-            "homeTeam_wins", "homeTeam_losses", "homeTeam_score",
-            "awayTeam_teamId", "awayTeam_teamName", "awayTeam_teamTricode",
-            "awayTeam_wins", "awayTeam_losses", "awayTeam_score",
-            "arenaName", "arenaCity", "arenaState"
+            "gameId", "gameDateEst", "gameDateTimeEst", "gameStatus", "gameStatusText",
+            "homeTeam", "awayTeam",
+            "arenaName", "arenaCity"
         ],
+        "nested_fields": {
+            "homeTeam": ["teamId", "teamName", "teamTricode", "wins", "losses", "score"],
+            "awayTeam": ["teamId", "teamName", "teamTricode", "wins", "losses", "score"]
+        },
         "file": "exploration_output/schedule_sample.json"
     },
     "PlayerIndex": {
@@ -70,7 +71,7 @@ EXPECTED_FIELDS = {
     }
 }
 
-def validate_endpoint(endpoint_name, expected_fields, file_path):
+def validate_endpoint(endpoint_name, expected_fields, file_path, nested_fields=None):
     """Validate that actual data contains expected fields"""
     print(f"\n{'='*70}")
     print(f"📋 Validating: {endpoint_name}")
@@ -123,6 +124,17 @@ def validate_endpoint(endpoint_name, expected_fields, file_path):
             actual_fields = set(sample_item.keys())
             expected = set(expected_fields)
             
+            # Check nested fields if specified
+            nested_missing = []
+            if nested_fields:
+                for parent_field, child_fields in nested_fields.items():
+                    if parent_field in sample_item:
+                        nested_obj = sample_item[parent_field]
+                        if isinstance(nested_obj, dict):
+                            nested_actual = set(nested_obj.keys())
+                            nested_expected = set(child_fields)
+                            nested_missing.extend([f"{parent_field}.{f}" for f in (nested_expected - nested_actual)])
+            
             missing = expected - actual_fields
             extra = actual_fields - expected
             present = expected & actual_fields
@@ -132,9 +144,11 @@ def validate_endpoint(endpoint_name, expected_fields, file_path):
             print(f"   Essential fields expected: {len(expected)}")
             print(f"   ✅ Essential fields present: {len(present)}/{len(expected)}")
             
-            if missing:
+            if missing or nested_missing:
                 print(f"\n   ⚠️  MISSING ESSENTIAL FIELDS:")
                 for field in sorted(missing):
+                    print(f"      - {field}")
+                for field in sorted(nested_missing):
                     print(f"      - {field}")
             else:
                 print(f"   ✅ All essential fields present!")
@@ -148,9 +162,13 @@ def validate_endpoint(endpoint_name, expected_fields, file_path):
             for field in list(expected)[:5]:
                 if field in sample_item:
                     value = sample_item[field]
-                    print(f"   {field}: {value}")
+                    # Handle nested objects
+                    if isinstance(value, dict):
+                        print(f"   {field}: (nested object)")
+                    else:
+                        print(f"   {field}: {value}")
             
-            return len(missing) == 0
+            return len(missing) == 0 and len(nested_missing) == 0
     
     except Exception as e:
         print(f"❌ Error validating {endpoint_name}: {e}")
@@ -168,8 +186,9 @@ def main():
     for endpoint_name, config in EXPECTED_FIELDS.items():
         expected = config["essential"]
         file_path = config["file"]
+        nested_fields = config.get("nested_fields", None)
         
-        results[endpoint_name] = validate_endpoint(endpoint_name, expected, file_path)
+        results[endpoint_name] = validate_endpoint(endpoint_name, expected, file_path, nested_fields)
     
     # Summary
     print("\n" + "="*70)
