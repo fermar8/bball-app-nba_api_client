@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bball-app/schemas/teams_static.schema.json",
+  "title": "TeamsStaticPayload",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "id",
+      "full_name",
+      "abbreviation",
+      "nickname",
+      "city",
+      "state",
+      "year_founded"
+    ],
+    "properties": {
+      "id": {},
+      "full_name": {},
+      "abbreviation": {},
+      "nickname": {},
+      "city": {},
+      "state": {},
+      "year_founded": {}
+    },
+    "additionalProperties": true
+  }
+}
