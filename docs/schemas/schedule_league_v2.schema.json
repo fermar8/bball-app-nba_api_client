@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bball-app/schemas/schedule_league_v2.schema.json",
+  "title": "ScheduleLeagueV2Payload",
+  "type": "object",
+  "required": ["meta", "leagueSchedule"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["version", "request", "time"],
+      "properties": {
+        "version": {},
+        "request": {},
+        "time": {}
+      },
+      "additionalProperties": true
+    },
+    "leagueSchedule": {
+      "type": "object",
+      "required": ["seasonYear", "leagueId", "gameDates", "weeks"],
+      "properties": {
+        "seasonYear": { "type": ["string", "null"] },
+        "leagueId": { "type": ["string", "null"] },
+        "gameDates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["gameDate", "games"],
+            "properties": {
+              "gameDate": { "type": ["string", "null"] },
+              "games": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["homeTeam", "awayTeam", "pointsLeaders"],
+                  "properties": {
+                    "homeTeam": {
+                      "type": "object",
+                      "required": [
+                        "teamId",
+                        "teamName",
+                        "teamCity",
+                        "teamTricode",
+                        "teamSlug",
+                        "wins",
+                        "losses",
+                        "score",
+                        "seed"
+                      ],
+                      "properties": {
+                        "teamId": {},
+                        "teamName": {},
+                        "teamCity": {},
+                        "teamTricode": {},
+                        "teamSlug": {},
+                        "wins": {},
+                        "losses": {},
+                        "score": {},
+                        "seed": {}
+                      },
+                      "additionalProperties": true
+                    },
+                    "awayTeam": {
+                      "type": "object",
+                      "required": [
+                        "teamId",
+                        "teamName",
+                        "teamCity",
+                        "teamTricode",
+                        "teamSlug",
+                        "wins",
+                        "losses",
+                        "score",
+                        "seed"
+                      ],
+                      "properties": {
+                        "teamId": {},
+                        "teamName": {},
+                        "teamCity": {},
+                        "teamTricode": {},
+                        "teamSlug": {},
+                        "wins": {},
+                        "losses": {},
+                        "score": {},
+                        "seed": {}
+                      },
+                      "additionalProperties": true
+                    },
+                    "pointsLeaders": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "personId",
+                          "firstName",
+                          "lastName",
+                          "teamId",
+                          "teamCity",
+                          "teamName",
+                          "teamTricode",
+                          "points"
+                        ],
+                        "properties": {
+                          "personId": {},
+                          "firstName": {},
+                          "lastName": {},
+                          "teamId": {},
+                          "teamCity": {},
+                          "teamName": {},
+                          "teamTricode": {},
+                          "points": {}
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "weeks": {
+          "type": "array"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
