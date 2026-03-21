@@ -2,7 +2,8 @@
 
 > **Purpose**: Optimized schema for NBA game and player statistics with field filtering  
 > **Storage Optimization**: ~60% reduction through essential-fields-only approach  
-> **Design Date**: February 2026
+> **Design Date**: February 2026  
+> **Last Updated**: March 2026
 
 ---
 
@@ -116,6 +117,8 @@
 | `fromYear` | Number | 2003 | PlayerIndex |
 | `toYear` | Number | 2025 | PlayerIndex |
 
+`rosterStatus` is the **only availability indicator** provided by nba_api (1 = active roster, 0 = inactive). The library does not expose injury reason, suspension reason, or detailed availability status (confirmed via exhaustive scan of all 139 stats + 4 live endpoints).
+
 **Removed Fields**: 8 non-essential fields (PLAYER_SLUG, TEAM_SLUG, IS_DEFUNCT, etc.)
 
 ---
@@ -213,6 +216,37 @@ if new_game_completed():
 
 ---
 
+### Fantasy Game Requirements Coverage
+
+The schema is designed to satisfy all data needs for the fantasy basketball application. The table below maps each game requirement to its corresponding source.
+
+| Category | Requirement | Table | Field(s) |
+|----------|-------------|-------|----------|
+| **Scoring** | Points | nba_player_game_stats | `pts` |
+| | 2PT Field Goals (made/attempted) | nba_player_game_stats | `fgm - fg3m` / `fga - fg3a` (derived) |
+| | 3PT Field Goals (made/attempted) | nba_player_game_stats | `fg3m`, `fg3a` |
+| | Free Throws (made/attempted) | nba_player_game_stats | `ftm`, `fta` |
+| **Box Score** | Rebounds | nba_player_game_stats | `reb` (`oreb` + `dreb`) |
+| | Assists | nba_player_game_stats | `ast` |
+| | Steals | nba_player_game_stats | `stl` |
+| | Turnovers | nba_player_game_stats | `tov` |
+| | Blocks | nba_player_game_stats | `blk` |
+| | Blocks Against | nba_player_game_stats | `blka` |
+| | Personal Fouls | nba_player_game_stats | `pf` |
+| | Fouls Drawn | nba_player_game_stats | `pfd` |
+| | Minutes Played | nba_player_game_stats | `min` |
+| **Player Profile** | Name, Position, Jersey # | nba_players | `firstName`, `lastName`, `position`, `jerseyNumber` |
+| | Nationality, Height | nba_players | `country`, `height` |
+| | Availability | nba_players | `rosterStatus` (only indicator available) |
+| | Headshot Photo | nba_players | `playerId` → CDN: `cdn.nba.com/headshots/nba/latest/1040x760/{playerId}.png` |
+| **Schedule** | Upcoming Opponents | PlayerNextNGames API | via `/players/next-games` endpoint |
+| | Game Calendar & Results | nba_games | `gameDateEst`, `homeTeam`, `awayTeam`, `gameStatus` |
+| | Teams & Logos | nba_teams | `teamName`, `teamAbbreviation` + CDN URL pattern |
+
+> **Data not available via nba_api**: Birthplace (city), age/birth date, detailed injury reports. Country is available; birthdate/age would require an external source.
+
+---
+
 ## 💾 Storage Optimization Summary
 
 | Endpoint | Original Fields | Essential Fields | Reduction | Annual Records |
@@ -223,7 +257,7 @@ if new_game_completed():
 | PlayerNextNGames | 13 | 11 | **15%** | N/A (future) |
 | TeamInfoCommon | 27 total | 20 total | **26%** | ~900 |
 
-**Estimated Annual Savings**: ~60% storage reduction = ~$XXX/year in DynamoDB costs
+**Estimated Annual Savings**: ~60% storage reduction across all endpoints
 
 ---
 
@@ -238,13 +272,15 @@ if new_game_completed():
 
 ---
 
-## 📋 Next Steps (DEV-18)
+## 📋 Next Steps
 
 1. Implement DynamoDB table creation with Terraform/CDK
 2. Create data persistence layer using filtered field lists
 3. Implement batch write operations for `nba_player_game_stats`
 4. Set up daily Lambda triggers for data updates
 5. Add TTL for `PlayerNextNGames` (7-day expiration)
+
+> **Note**: The Flask API with S3 raw persistence, scheduled ingestion jobs, and JSON Schema validation were implemented in DEV-16. This schema design feeds into the next phase where raw S3 payloads are transformed and written to DynamoDB.
 
 ---
 

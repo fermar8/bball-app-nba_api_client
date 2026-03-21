@@ -28,24 +28,6 @@ cd bball-app-nba_api_client
 pip install -r requirements.txt
 ```
 
-## Project Structure
-
-```
-bball-app-nba_api_client/
-├── scripts/               # Utility scripts
-│   ├── explore_endpoints.py    # API exploration + field filtering
-│   └── validate_endpoints.py   # Data validation (strict)
-├── tests/                 # Test suite
-│   └── test_integration.py    # Integration tests
-├── docs/                  # Documentation
-│   ├── GAME_ENDPOINTS.md      # API endpoint specifications
-│   └── DATABASE_SCHEMA.md     # DynamoDB schema design
-├── exploration_output/    # Generated sample data (gitignored)
-├── server.py             # Flask API server
-├── requirements.txt      # Python dependencies
-└── README.md             # This file
-```
-
 ## Usage
 
 ### Running the Server
@@ -116,87 +98,6 @@ bball-app-nba_api_client/
 ├── README.md             # This file
 └── .gitignore            # Git ignore rules
 ```
-
-## Data Extraction (DEV-17)
-
-This repository uses the nba_api endpoints documented in [docs/GAME_ENDPOINTS.md](docs/GAME_ENDPOINTS.md).
-The complete DynamoDB schema design with field optimization is in [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md).
-
-### Quick Start
-
-**Explore endpoints and see field filtering in action:**
-```bash
-python scripts/explore_endpoints.py
-```
-
-**Validate filtered data (strict mode - no extra fields):**
-```bash
-python scripts/validate_endpoints.py
-```
-
-### Data Collection Strategy
-
-- **Tier 1 (ID Providers)**
-  - ScheduleLeagueV2 → provides `gameId` for future use (fetch daily during season)
-  - PlayerIndex → provides `PERSON_ID` for player-specific endpoints (fetch weekly or on roster changes)
-  - Teams (static) → provides `TEAM_ID` for team info (fetch once per season; static module)
-- **Tier 2 (Parameterized)**
-  - PlayerGameLogs → uses `PERSON_ID` (fetch incrementally using date_from/date_to)
-  - PlayerNextNGames → uses `PERSON_ID` (fetch on slower cadence, e.g., daily/weekly)
-  - TeamInfoCommon → uses `TEAM_ID` (fetch daily for standings)
-
-Static data is overwritten (low frequency updates). Dynamic data is date-partitioned (high frequency updates).
-Key optimizations: **incremental updates** (only fetch new games) and **field filtering** (~60% storage reduction).
-
-### DynamoDB Schema
-
-**Full schema documentation:** [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md)
-
-This structure minimizes tables and writes while still satisfying Tier 1 → Tier 2 dependencies.
-
-1. **nba_games** (ScheduleLeagueV2)
-  - **PK:** `gameId`
-  - **Essential fields:** 9 (72% reduction from 33 original fields)
-  - **Use case:** query games by date, get final scores
-
-2. **nba_players** (PlayerIndex)
-  - **PK:** `playerId`
-  - **Essential fields:** 18 (31% reduction from 26 original fields)
-  - **Use case:** player directory and roster lookup
-
-3. **nba_player_game_stats** (PlayerGameLogs)
-  - **PK:** `playerId#gameId` (composite)
-  - **SK:** `gameDate`
-  - **Essential fields:** 29 (58% reduction from 70 original fields)
-  - **Use case:** all games and stats for a player, sorted by date
-
-4. **nba_teams** (Teams static + TeamInfoCommon)
-  - **PK:** `teamId`
-  - **Essential fields:** 20 total (26% reduction from 27 original fields)
-  - **Use case:** team metadata and season rankings
-
-**Storage Optimization:** Field filtering reduces storage costs by ~60% across all endpoints.
-
-### Response Schemas (Minimal)
-
-The canonical response schemas (essential fields) are defined in [docs/GAME_ENDPOINTS.md](docs/GAME_ENDPOINTS.md).
-To view real examples with filtering, run `scripts/explore_endpoints.py` (writes sample JSON to `exploration_output/`).
-
-### Persistence Mapping (DynamoDB)
-
-See complete mapping in [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md) including:
-- Detailed field lists per table
-- Update frequencies and fetch cadences
-- Data flow diagrams
-- Cost optimization calculations
-
-- **PlayerNextNGames → Players table (embedded list)**
-  - Store: upcoming games as a small list per player (overwrite)
-
-- **Teams static + TeamInfoCommon → Teams table**
-  - PK: `TEAM_ID`, SK: `SEASON`
-  - Store: static team info + season rankings
-
 
 ## Contributing
 

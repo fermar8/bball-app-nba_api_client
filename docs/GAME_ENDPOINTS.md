@@ -1,4 +1,4 @@
-t# NBA API Endpoints for Fantasy Basketball Game
+# NBA API Endpoints for Fantasy Basketball Game
 
 This document describes the NBA API endpoints required to build a fantasy basketball game, organized by dependency chain and optimized for cost-effective data storage.
 
@@ -414,9 +414,9 @@ nba-data/
    - **Workaround**: Display country only, or use external data source
 
 4. **Detailed Injury Reports**
-   - **Status**: No dedicated injury endpoint
-   - **Available**: `ROSTER_STATUS` in PlayerIndex (active/inactive indicator)
-   - **Workaround**: Use `ROSTER_STATUS` as approximation, or use external injury data sources
+   - **Status**: No dedicated injury endpoint. Exhaustive scan of all 139 stats + 4 live nba_api endpoints confirmed that injury reason, suspension reason, and detailed availability status are not exposed anywhere in the library.
+   - **Available**: `ROSTER_STATUS` in PlayerIndex (1.0 = active roster, 0.0 = inactive)
+   - **Workaround**: Use `ROSTER_STATUS` as the availability indicator. For detailed injury reports, an external data source would be needed.
 
 ---
 
@@ -572,78 +572,25 @@ stats = PlayerGameLogs(
 
 ## Usage Instructions
 
-### Current Implementation (Tier 1 Only)
+### Exploration Scripts
 
-The current `scripts/fetch_and_upload.py` script supports Tier 1 endpoints without parameters.
-
-**Prerequisites**:
-
-1. Set environment variable: `AWS_S3_BUCKET_NAME`
-2. Configure AWS credentials (via environment or ~/.aws/credentials)
-3. Install dependencies: `pip install nba-api boto3`
-
-**Configuration**:
-
-Edit `scripts/endpoints_config.json` to enable/disable endpoints:
-
-```json
-{
-  "endpoints": [
-    {
-      "name": "schedule",
-      "type": "stats",
-      "module": "nba_api.stats.endpoints.scheduleleaguev2",
-      "class": "ScheduleLeagueV2",
-      "enabled": true,
-      "description": "Full season schedule",
-      "essential_fields": [
-        "gameId",
-        "gameDate",
-        "gameDateTimeEst",
-        "gameStatus",
-        "homeTeam_teamId",
-        "homeTeam_teamName",
-        "homeTeam_teamTricode",
-        "homeTeam_score",
-        "awayTeam_teamId",
-        "awayTeam_teamName",
-        "awayTeam_teamTricode",
-        "awayTeam_score"
-      ]
-    }
-  ]
-}
-```
-
-**Run the script**:
+Explore endpoints and see field filtering in action:
 
 ```bash
-# Windows PowerShell
-$env:AWS_S3_BUCKET_NAME="your-bucket-name"
-python scripts/fetch_and_upload.py
-
-# Linux/Mac
-export AWS_S3_BUCKET_NAME="your-bucket-name"
-python scripts/fetch_and_upload.py
+python scripts/explore_endpoints.py
 ```
 
-### Response Schema Reference
+Validate filtered data (strict mode — no extra fields):
 
-See `scripts/response_schemas.md` for detailed documentation of all response formats, including:
+```bash
+python scripts/validate_endpoints.py
+```
 
-- Example responses for each endpoint
-- ID field locations for dependency chaining
-- Fantasy-relevant stat field descriptions
-- Storage impact analysis per endpoint
+Both scripts write sample JSON to `exploration_output/` (gitignored).
 
-### Response Schema Files
+### Response Schemas
 
-Example response structures are available in `scripts/`:
-
-- `response_schema_scheduleleaguev2.json` - Full season schedule
-- `response_schema_playerindex.json` - Player directory
-- `response_schema_playergamelogs.json` - Game-by-game stats
-- `response_schema_playernextngames.json` - Upcoming games
+The Flask API (implemented in DEV-16) includes JSON Schema validation files in `docs/schemas/` and full response documentation in `docs/RESPONSE_SCHEMAS.md`.
 
 ---
 
@@ -653,16 +600,18 @@ Example response structures are available in `scripts/`:
 
 For the fantasy game MVP, you need these endpoints:
 
-**Tier 1** (Can fetch now):
+**Tier 1** (ID Providers):
 
 1. ✅ **ScheduleLeagueV2** - Full schedule with results
-2. ✅ **PlayerIndex** - Player directory with all details
+2. ✅ **PlayerIndex** - Player directory with all details + availability (`ROSTER_STATUS`)
 3. ✅ **Teams (static)** - Team information
 
-**Tier 2** (Requires chained fetching implementation):
+**Tier 2** (Parameterized):
 
-4. ⏳ **PlayerGameLogs** - Complete stats including BLKA, PFD (PRIMARY STATS)
-5. ⏳ **PlayerNextNGames** - Upcoming opponents per player
+4. ✅ **PlayerGameLogs** - Complete stats including BLKA, PFD (PRIMARY STATS)
+5. ✅ **PlayerNextNGames** - Upcoming opponents per player
+
+All endpoints are implemented in the Flask API (DEV-16) and covered in the Postman collection.
 
 ### Cost Optimization
 
@@ -675,7 +624,7 @@ For the fantasy game MVP, you need these endpoints:
 ### Next Steps
 
 1. ✅ Review essential fields and adjust if needed
-2. ⏳ Implement field filtering in fetch_and_upload.py
-3. ⏳ Implement chained fetching for Tier 2 endpoints
-4. ⏳ Test with small data set before full season fetch
-5. ⏳ Monitor S3 costs and adjust filtering as needed
+2. ✅ All 5 endpoints implemented in Flask API (DEV-16)
+3. ✅ S3 raw persistence with `persist_raw=true` query param (DEV-16)
+4. ⏳ Implement field filtering at DynamoDB write time (future task)
+5. ⏳ Implement DynamoDB tables and persistence layer (future task)
