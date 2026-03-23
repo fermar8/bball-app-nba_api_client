@@ -11,7 +11,7 @@ from nba_api.stats.static import teams as teams_static
 
 from app.services.config import endpoint_persist_enabled, get_missing_required_env_vars
 from app.services.ingestion_service import persist_validated_payload
-from app.services.injuries_service import get_normalized_injury_report
+from app.services.storage_service import get_latest_endpoint_payload
 from app.utils.request_utils import parse_int_query_param, should_persist_raw_from_request
 
 api_blueprint = Blueprint('api', __name__)
@@ -234,7 +234,9 @@ def get_injuries_report():
         status_filter = request.args.get('status')
         team_filter = request.args.get('team')
 
-        injuries, raw_count = get_normalized_injury_report()
+        cached_payload, cached_s3_key = get_latest_endpoint_payload('injury_report')
+        injuries = cached_payload.get('injuries', [])
+        raw_count = int(cached_payload.get('raw_entries_count', len(injuries)))
 
         if status_filter:
             status_filter_l = status_filter.strip().lower()
@@ -249,7 +251,7 @@ def get_injuries_report():
             'raw_entries_count': raw_count,
             'count': len(injuries),
             'injuries': injuries,
-            'updated_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'updated_at': cached_payload.get('updated_at') or datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         }
 
         params: dict[str, str] = {}
@@ -260,9 +262,20 @@ def get_injuries_report():
 
         raw_key = maybe_persist_endpoint_payload('injury_report', data, params)
         response = {'success': True, 'data': data}
+        response['source_s3_key'] = cached_s3_key
         if raw_key:
             response['raw_s3_key'] = raw_key
         return jsonify(response)
+    except FileNotFoundError:
+        return (
+            jsonify(
+                {
+                    'success': False,
+                    'error': 'No persisted injury report snapshot found. Run injury_report_raw_ingestion first.',
+                }
+            ),
+            503,
+        )
     except RuntimeError as exc:
         return jsonify({'success': False, 'error': str(exc)}), 503
     except Exception as exc:

@@ -6,6 +6,7 @@ from app import create_app
 from app.services.config import get_missing_required_env_vars, is_debug_mode, should_start_scheduler
 from app.services.ingestion_service import (
     persist_validated_payload,
+    run_injury_report_raw_ingestion,
     run_player_game_logs_raw_ingestion,
     run_player_index_raw_ingestion,
     run_player_next_n_games_raw_ingestion,

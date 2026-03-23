@@ -15,7 +15,7 @@ Flask server that consumes [nba_api](https://github.com/swar/nba_api) and suppor
 - `/schedule` endpoint backed by `ScheduleLeagueV2`
 - `/teams` endpoint backed by `teams_static`
 - `/players/index` endpoint backed by `PlayerIndex` (roster status only)
-- `/injuries/report` endpoint backed by `nbainjuries` (official report normalization)
+- `/injuries/report` endpoint serving the latest persisted official injury snapshot from S3
 - `/players/game-logs` endpoint backed by `PlayerGameLogs`
 - `/players/next-games` endpoint backed by `PlayerNextNGames`
 - `/health` endpoint
@@ -26,7 +26,7 @@ Flask server that consumes [nba_api](https://github.com/swar/nba_api) and suppor
 ## Prerequisites
 
 - Python 3.10+
-- Java 8+ (required by `nbainjuries` / `tabula-py`)
+- Java 8+ (required only for the injury ingestion job that runs `nbainjuries`)
 - AWS credentials available to the runtime (for S3 put operations)
 
 ## Installation
@@ -99,6 +99,13 @@ Participant discovery controls:
 - `PLAYER_PARTICIPANT_LOOKBACK_DAYS` (default: `1`, means yesterday only)
 - `PLAYER_JOB_MAX_PLAYERS_PER_RUN` (default: `150`)
 
+### Injury report job (`nbainjuries`)
+
+- `INJURY_REPORT_JOB_ENABLED` (`true/false`, default: `false`)
+- `INJURY_REPORT_JOB_HOUR_UTC` (default: `22`)
+- `INJURY_REPORT_JOB_MINUTE_UTC` (default: `0`)
+- `INJURY_REPORT_JOB_RUN_ON_STARTUP` (`true/false`, default: `false`)
+
 nba_api resilience controls:
 
 - `NBA_API_TIMEOUT_SECONDS` (default: `15`)
@@ -165,6 +172,12 @@ Base URL (local): `http://localhost:5000`
   - `persist_raw=true` (validate + upload this response to S3)
 - Example: `GET http://localhost:5000/injuries/report?status=questionable&team=LAL`
 
+Data source behavior:
+
+- Request-time API reads the latest persisted `injury_report` snapshot from S3.
+- The scheduled injury report ingestion job is responsible for fetching/parsing the official report.
+- If no snapshot is available yet, endpoint returns HTTP `503`.
+
 Response fields:
 
 - `source`: always `nbainjuries`
@@ -178,7 +191,7 @@ Primary usage note:
 
 Runtime note:
 
-- If Java is not installed (or `JAVA_HOME` is not set), this endpoint returns HTTP `503` with a clear runtime error.
+- Java is required for the ingestion job environment, not for API request-time reads from `/injuries/report`.
 
 ### Player Game Logs
 
