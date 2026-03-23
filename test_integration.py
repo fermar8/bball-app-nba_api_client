@@ -236,6 +236,45 @@ class ServerRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mock_player_next_games_cls.assert_called_once_with(player_id=2544, number_of_games=4, season_all='2025-26')
 
+    @patch('app.routes.api_routes.get_normalized_injury_report')
+    def test_injuries_report_route(self, mock_get_normalized_report):
+        mock_get_normalized_report.return_value = (
+            [
+                {
+                    'player_id': 2544,
+                    'player_name': 'LeBron James',
+                    'team_abbr': 'LAL',
+                    'status': 'questionable',
+                    'availability': 'doubtful',
+                    'reason_type': 'injury',
+                    'reason': 'Right Knee; Soreness',
+                    'report_date': '2026-03-23',
+                }
+            ],
+            1,
+        )
+
+        response = self.client.get('/injuries/report?status=questionable&team=LAL')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()['data']
+        self.assertEqual(payload['source'], 'nbainjuries')
+        self.assertEqual(payload['raw_entries_count'], 1)
+        self.assertEqual(payload['count'], 1)
+        self.assertEqual(payload['injuries'][0]['player_id'], 2544)
+        self.assertEqual(payload['injuries'][0]['availability'], 'doubtful')
+
+    @patch('app.routes.api_routes.get_normalized_injury_report')
+    def test_injuries_report_route_missing_dependency(self, mock_get_normalized_report):
+        mock_get_normalized_report.side_effect = RuntimeError('nbainjuries dependency is not installed.')
+
+        response = self.client.get('/injuries/report')
+
+        self.assertEqual(response.status_code, 503)
+        payload = response.get_json()
+        self.assertFalse(payload['success'])
+        self.assertIn('nbainjuries dependency is not installed.', payload['error'])
+
 
 class RawIngestionTests(unittest.TestCase):
     @patch('app.services.storage_service.boto3.client')

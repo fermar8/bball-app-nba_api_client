@@ -1,4 +1,5 @@
 nba_api>=1.1.0
+nbainjuries>=1.1.1
 flask>=3.0.0
 boto3>=1.34.0
 apscheduler>=3.10.4

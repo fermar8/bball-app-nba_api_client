@@ -1,4 +1,4 @@
-z# bball-app-nba_api_client
+# bball-app-nba_api_client
 
 Flask server that consumes [nba_api](https://github.com/swar/nba_api) and supports two things:
 
@@ -14,7 +14,8 @@ Flask server that consumes [nba_api](https://github.com/swar/nba_api) and suppor
 
 - `/schedule` endpoint backed by `ScheduleLeagueV2`
 - `/teams` endpoint backed by `teams_static`
-- `/players/index` endpoint backed by `PlayerIndex` — also provides player availability via `ROSTER_STATUS` field (1.0 = active roster, 0.0 = inactive)
+- `/players/index` endpoint backed by `PlayerIndex` (roster status only)
+- `/injuries/report` endpoint backed by `nbainjuries` (official report normalization)
 - `/players/game-logs` endpoint backed by `PlayerGameLogs`
 - `/players/next-games` endpoint backed by `PlayerNextNGames`
 - `/health` endpoint
@@ -25,6 +26,7 @@ Flask server that consumes [nba_api](https://github.com/swar/nba_api) and suppor
 ## Prerequisites
 
 - Python 3.10+
+- Java 8+ (required by `nbainjuries` / `tabula-py`)
 - AWS credentials available to the runtime (for S3 put operations)
 
 ## Installation
@@ -154,16 +156,29 @@ Base URL (local): `http://localhost:5000`
 - Optional query param: `persist_raw=true` (validate + upload this response to S3)
 - Example: `GET http://localhost:5000/players/index`
 
-### Player Availability (via Player Index)
+### Official Injury Report
 
-Player availability/roster status is provided by the existing `/players/index` endpoint through the `ROSTER_STATUS` field:
+- `GET /injuries/report`
+- Optional query params:
+  - `status` (one of `out`, `questionable`, `doubtful`, `probable`, `available`, `unknown`)
+  - `team` (team abbreviation, e.g. `LAL`)
+  - `persist_raw=true` (validate + upload this response to S3)
+- Example: `GET http://localhost:5000/injuries/report?status=questionable&team=LAL`
 
-- `ROSTER_STATUS = 1.0` → player is on active roster
-- `ROSTER_STATUS = 0.0` → player is not on active roster
+Response fields:
 
-A dedicated `/players/availability` endpoint was **not created** because `PlayerIndex` already returns all ~536 active players in a single call, including their roster status. Creating a separate endpoint would duplicate the same `nba_api` call (`PlayerIndex`) without adding new data.
+- `source`: always `nbainjuries`
+- `raw_entries_count`: total entries read from upstream report
+- `count`: entries returned after optional filters
+- `injuries[]`: normalized player-level injury entries with `player_id`, `status`, `availability`, and `reason`
 
-> **nba_api limitation**: The library does not expose injury reason, suspension reason, or any detailed availability status. `ROSTER_STATUS` is the only availability indicator available. For detailed injury reports, an external data source would be needed.
+Primary usage note:
+
+- This is the primary endpoint for pregame fantasy injury status and availability.
+
+Runtime note:
+
+- If Java is not installed (or `JAVA_HOME` is not set), this endpoint returns HTTP `503` with a clear runtime error.
 
 ### Player Game Logs
 
@@ -242,6 +257,7 @@ Validation source of truth:
 - `docs/schemas/player_index.schema.json`
 - `docs/schemas/player_game_logs.schema.json`
 - `docs/schemas/player_next_n_games.schema.json`
+- `docs/schemas/injury_report.schema.json`
 - `docs/schemas/teams_static.schema.json`
 
 Detailed shape docs:
