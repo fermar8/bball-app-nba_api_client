@@ -442,6 +442,46 @@ class RawIngestionTests(unittest.TestCase):
             server.persist_validated_payload('schedule_league_v2', {'invalid': 'shape'}, {})
 
 
+class InjuriesNormalizationTests(unittest.TestCase):
+    @patch('app.services.injuries_service.teams_static.get_teams')
+    @patch('app.services.injuries_service._build_player_id_index')
+    @patch('app.services.injuries_service._load_nbainjuries_payload')
+    def test_get_normalized_injury_report_maps_team_abbreviation_and_player_name(
+        self,
+        mock_load_payload,
+        mock_build_player_id_index,
+        mock_get_teams,
+    ):
+        from app.services.injuries_service import get_normalized_injury_report
+
+        mock_load_payload.return_value = [
+            {
+                'Player Name': 'James, LeBron',
+                'Team': 'Los Angeles Lakers',
+                'Current Status': 'Questionable',
+                'Reason': 'Injury/Illness - Left Foot; Soreness',
+                'Game Date': '03/23/2026',
+            }
+        ]
+        mock_build_player_id_index.return_value = {'lebron james': 2544}
+        mock_get_teams.return_value = [
+            {
+                'full_name': 'Los Angeles Lakers',
+                'abbreviation': 'LAL',
+                'nickname': 'Lakers',
+                'city': 'Los Angeles',
+            }
+        ]
+
+        injuries, raw_count = get_normalized_injury_report()
+
+        self.assertEqual(raw_count, 1)
+        self.assertEqual(len(injuries), 1)
+        self.assertEqual(injuries[0]['player_id'], 2544)
+        self.assertEqual(injuries[0]['player_name'], 'LeBron James')
+        self.assertEqual(injuries[0]['team_abbr'], 'LAL')
+
+
 class SchedulerTests(unittest.TestCase):
     @patch('app.services.scheduler_service.scheduler')
     def test_start_scheduler_registers_all_enabled_data_jobs(self, scheduler_mock):
