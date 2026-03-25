@@ -6,6 +6,7 @@ from nba_api.stats.endpoints import (
     PlayerIndex,
     PlayerNextNGames,
     ScheduleLeagueV2,
+    ScoreboardV2,
 )
 from nba_api.stats.static import teams as teams_static
 
@@ -32,6 +33,7 @@ def index():
             'version': '1.0.0',
             'endpoints': {
                 '/schedule': 'Get NBA league schedule',
+                '/scoreboard': 'Get NBA scoreboard data',
                 '/teams': 'Get NBA teams list with ids',
                 '/players/index': 'Get player index data',
                 '/players/game-logs': 'Get player game logs',
@@ -83,6 +85,32 @@ def get_schedule():
 
         payload = schedule.get_dict()
         raw_key = maybe_persist_endpoint_payload('schedule_league_v2', payload, params)
+        response = {'success': True, 'data': payload}
+        if raw_key:
+            response['raw_s3_key'] = raw_key
+        return jsonify(response)
+    except Exception as exc:
+        return jsonify({'success': False, 'error': str(exc)}), 500
+
+
+@api_blueprint.route('/scoreboard')
+def get_scoreboard():
+    try:
+        game_date = request.args.get('game_date')
+        params = {}
+
+        if game_date:
+            try:
+                datetime.strptime(game_date, '%m/%d/%Y')
+            except ValueError:
+                return jsonify({'success': False, 'error': 'Invalid game_date format. Use MM/DD/YYYY.'}), 400
+
+            payload = ScoreboardV2(game_date=game_date).get_dict()
+            params['game_date'] = game_date
+        else:
+            payload = ScoreboardV2().get_dict()
+
+        raw_key = maybe_persist_endpoint_payload('scoreboard_v2', payload, params)
         response = {'success': True, 'data': payload}
         if raw_key:
             response['raw_s3_key'] = raw_key

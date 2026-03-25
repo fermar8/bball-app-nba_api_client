@@ -56,6 +56,7 @@ Current validator coverage:
   "version": "1.0.0",
   "endpoints": {
     "/schedule": "Get NBA league schedule",
+    "/scoreboard": "Get NBA scoreboard data",
     "/teams": "Get NBA teams list with ids",
     "/players/index": "Get player index data",
     "/players/game-logs": "Get player game logs",
@@ -181,6 +182,32 @@ Notes:
 - `ScheduleLeagueV2` returns nested JSON (`meta` + `leagueSchedule`) instead of `resultSets`.
 - `homeTeam` and `awayTeam` currently include: `teamId`, `teamName`, `teamCity`, `teamTricode`, `teamSlug`, `wins`, `losses`, `score`, `seed`.
 - `pointsLeaders` items currently include: `personId`, `firstName`, `lastName`, `teamId`, `teamCity`, `teamName`, `teamTricode`, `points`.
+
+## GET /scoreboard
+
+Backed by `ScoreboardV2` from `nba_api`.
+
+```json
+{
+  "success": true,
+  "data": {
+    "resource": "scoreboardv2",
+    "parameters": {},
+    "resultSets": [
+      {
+        "name": "GameHeader",
+        "headers": ["GAME_ID"],
+        "rowSet": [["0022400001"]]
+      }
+    ]
+  }
+}
+```
+
+Notes:
+
+- Optional query param `game_date` is accepted in format `MM/DD/YYYY`.
+- Invalid `game_date` values return HTTP 400.
 
 ## GET /teams
 

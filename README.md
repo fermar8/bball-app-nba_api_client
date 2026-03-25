@@ -2,7 +2,7 @@
 
 Flask server that consumes [nba_api](https://github.com/swar/nba_api) and supports two things:
 
-1. Public API endpoints (health + schedule)
+1. Public API endpoints (health + schedule + scoreboard + teams + players)
 2. In-process scheduled jobs that fetch raw nba_api payloads and upload them to S3
 
 ## Current AWS Target
@@ -13,6 +13,7 @@ Flask server that consumes [nba_api](https://github.com/swar/nba_api) and suppor
 ## Features
 
 - `/schedule` endpoint backed by `ScheduleLeagueV2`
+- `/scoreboard` endpoint backed by `ScoreboardV2`
 - `/health` endpoint
 - Daily in-server scheduler (env-controlled)
 - Raw payload upload to S3 (no DynamoDB writes)
@@ -137,6 +138,15 @@ Base URL (local): `http://localhost:5000`
 - Examples:
   - `GET http://localhost:5000/schedule`
   - `GET http://localhost:5000/schedule?season=2023`
+
+### Scoreboard
+
+- `GET /scoreboard`
+- Optional query param: `game_date=MM/DD/YYYY`
+- Optional query param: `persist_raw=true` (validate + upload this response to S3)
+- Examples:
+  - `GET http://localhost:5000/scoreboard`
+  - `GET http://localhost:5000/scoreboard?game_date=03/06/2026`
 
 ### Teams
 
