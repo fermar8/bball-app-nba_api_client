@@ -150,6 +150,53 @@ class ServerRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.get_json()['success'])
 
+    @patch('app.routes.api_routes.ScoreboardV2')
+    def test_scoreboard_route_default(self, mock_scoreboard_cls):
+        endpoint_response = MagicMock()
+        endpoint_response.get_dict.return_value = build_valid_scoreboard_payload()
+        mock_scoreboard_cls.return_value = endpoint_response
+
+        response = self.client.get('/scoreboard')
+
+        self.assertEqual(response.status_code, 200)
+        mock_scoreboard_cls.assert_called_once_with()
+        self.assertTrue(response.get_json()['success'])
+
+    @patch('app.routes.api_routes.ScoreboardV2')
+    def test_scoreboard_route_with_game_date(self, mock_scoreboard_cls):
+        endpoint_response = MagicMock()
+        endpoint_response.get_dict.return_value = build_valid_scoreboard_payload()
+        mock_scoreboard_cls.return_value = endpoint_response
+
+        response = self.client.get('/scoreboard?game_date=03/06/2026')
+
+        self.assertEqual(response.status_code, 200)
+        mock_scoreboard_cls.assert_called_once_with(game_date='03/06/2026')
+        self.assertTrue(response.get_json()['success'])
+
+    def test_scoreboard_route_invalid_game_date(self):
+        response = self.client.get('/scoreboard?game_date=2026-03-06')
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.get_json()
+        self.assertFalse(payload['success'])
+        self.assertEqual(payload['error'], 'Invalid game_date format. Use MM/DD/YYYY.')
+
+    @patch('app.routes.api_routes.persist_validated_payload')
+    @patch('app.routes.api_routes.ScoreboardV2')
+    def test_scoreboard_route_persist_raw(self, mock_scoreboard_cls, mock_persist):
+        endpoint_response = MagicMock()
+        endpoint_response.get_dict.return_value = build_valid_scoreboard_payload()
+        mock_scoreboard_cls.return_value = endpoint_response
+        mock_persist.return_value = 'raw/scoreboard_v2/2026/03/08/file.json'
+
+        response = self.client.get('/scoreboard?persist_raw=true')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertIn('raw_s3_key', payload)
+        mock_persist.assert_called_once()
+
     @patch('app.routes.api_routes.persist_validated_payload')
     @patch('app.routes.api_routes.ScheduleLeagueV2')
     def test_schedule_route_persist_raw(self, mock_schedule_cls, mock_persist):
