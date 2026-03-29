@@ -236,28 +236,22 @@ class ServerRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mock_player_next_games_cls.assert_called_once_with(player_id=2544, number_of_games=4, season_all='2025-26')
 
-    @patch('app.routes.api_routes.get_latest_endpoint_payload')
-    def test_injuries_report_route(self, mock_get_latest_payload):
-        mock_get_latest_payload.return_value = (
-            {
-                'source': 'nbainjuries',
-                'raw_entries_count': 1,
-                'count': 1,
-                'updated_at': '2026-03-23T18:05:00Z',
-                'injuries': [
-                    {
-                        'player_id': 2544,
-                        'player_name': 'LeBron James',
-                        'team_abbr': 'LAL',
-                        'status': 'questionable',
-                        'availability': 'doubtful',
-                        'reason_type': 'injury',
-                        'reason': 'Right Knee; Soreness',
-                        'report_date': '2026-03-23',
-                    }
-                ],
-            },
-            'raw/injury_report/2026/03/23/18/file.json',
+    @patch('app.routes.api_routes.get_normalized_injury_report')
+    def test_injuries_report_route(self, mock_get_normalized_report):
+        mock_get_normalized_report.return_value = (
+            [
+                {
+                    'player_id': 2544,
+                    'player_name': 'LeBron James',
+                    'team_abbr': 'LAL',
+                    'status': 'questionable',
+                    'availability': 'doubtful',
+                    'reason_type': 'injury',
+                    'reason': 'Right Knee; Soreness',
+                    'report_date': '2026-03-23',
+                }
+            ],
+            1,
         )
 
         response = self.client.get('/injuries/report?status=questionable&team=LAL')
@@ -269,18 +263,18 @@ class ServerRouteTests(unittest.TestCase):
         self.assertEqual(payload['count'], 1)
         self.assertEqual(payload['injuries'][0]['player_id'], 2544)
         self.assertEqual(payload['injuries'][0]['availability'], 'doubtful')
-        self.assertEqual(response.get_json()['source_s3_key'], 'raw/injury_report/2026/03/23/18/file.json')
+        mock_get_normalized_report.assert_called_once()
 
-    @patch('app.routes.api_routes.get_latest_endpoint_payload')
-    def test_injuries_report_route_missing_snapshot(self, mock_get_latest_payload):
-        mock_get_latest_payload.side_effect = FileNotFoundError('missing')
+    @patch('app.routes.api_routes.get_normalized_injury_report')
+    def test_injuries_report_route_runtime_error(self, mock_get_normalized_report):
+        mock_get_normalized_report.side_effect = RuntimeError('nbainjuries dependency is not installed.')
 
         response = self.client.get('/injuries/report')
 
         self.assertEqual(response.status_code, 503)
         payload = response.get_json()
         self.assertFalse(payload['success'])
-        self.assertIn('No persisted injury report snapshot found', payload['error'])
+        self.assertIn('nbainjuries dependency is not installed.', payload['error'])
 
 
 class RawIngestionTests(unittest.TestCase):

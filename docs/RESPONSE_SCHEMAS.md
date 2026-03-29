@@ -533,12 +533,11 @@ Query params:
 
 ## GET /injuries/report
 
-Serves the latest persisted `injury_report` snapshot from S3 (snapshot is produced by the `nbainjuries` ingestion job).
+Performs a live `nbainjuries` call at request time and returns normalized injuries.
 
 ```json
 {
   "success": true,
-  "source_s3_key": "raw/injury_report/2026/03/23/18/20260323T180500Z_ab12cd34.json",
   "data": {
     "source": "nbainjuries",
     "raw_entries_count": 120,
@@ -564,8 +563,7 @@ Notes:
 
 - Optional query params: `status` and `team`.
 - `player_id` is matched from `PlayerIndex`; when name matching fails, `player_id` is `null`.
-- If no persisted `injury_report` snapshot exists yet, endpoint returns HTTP `503`.
-- Java is required in the ingestion-job runtime where `nbainjuries` executes, not in request-time API reads.
+- Java is required in the runtime where this endpoint is executed.
 
 Validation error example:
 

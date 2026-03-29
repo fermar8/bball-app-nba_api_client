@@ -345,37 +345,27 @@
       }
     },
     {
-      "name": "Official Injuries Report - Default",
+      "name": "Injuries Report - Default",
       "request": {
         "method": "GET",
         "url": {
-          "raw": "{{base_url}}/injuries/report?status=questionable&team=LAL",
+          "raw": "{{base_url}}/injuries/report",
           "host": [
             "{{base_url}}"
           ],
           "path": [
             "injuries",
             "report"
-          ],
-          "query": [
-            {
-              "key": "status",
-              "value": "questionable"
-            },
-            {
-              "key": "team",
-              "value": "LAL"
-            }
           ]
         }
       }
     },
     {
-      "name": "Official Injuries Report - Persist Raw",
+      "name": "Injuries Report - Persist Raw",
       "request": {
         "method": "GET",
         "url": {
-          "raw": "{{base_url}}/injuries/report?status=questionable&team=LAL&persist_raw=true",
+          "raw": "{{base_url}}/injuries/report?persist_raw=true",
           "host": [
             "{{base_url}}"
           ],
@@ -384,14 +374,6 @@
             "report"
           ],
           "query": [
-            {
-              "key": "status",
-              "value": "questionable"
-            },
-            {
-              "key": "team",
-              "value": "LAL"
-            },
             {
               "key": "persist_raw",
               "value": "true"

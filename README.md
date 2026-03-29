@@ -15,7 +15,7 @@ Flask server that consumes [nba_api](https://github.com/swar/nba_api) and suppor
 - `/schedule` endpoint backed by `ScheduleLeagueV2`
 - `/teams` endpoint backed by `teams_static`
 - `/players/index` endpoint backed by `PlayerIndex` (roster status only)
-- `/injuries/report` endpoint serving the latest persisted official injury snapshot from S3
+- `/injuries/report` endpoint performing a live official injury fetch (`nbainjuries`)
 - `/players/game-logs` endpoint backed by `PlayerGameLogs`
 - `/players/next-games` endpoint backed by `PlayerNextNGames`
 - `/health` endpoint
@@ -174,9 +174,8 @@ Base URL (local): `http://localhost:5000`
 
 Data source behavior:
 
-- Request-time API reads the latest persisted `injury_report` snapshot from S3.
-- The scheduled injury report ingestion job is responsible for fetching/parsing the official report.
-- If no snapshot is available yet, endpoint returns HTTP `503`.
+- Request-time API performs a live `nbainjuries` call and returns normalized injuries.
+- This endpoint does not require a preexisting injury snapshot in S3.
 
 Response fields:
 
@@ -191,7 +190,7 @@ Primary usage note:
 
 Runtime note:
 
-- Java is required for the ingestion job environment, not for API request-time reads from `/injuries/report`.
+- Java is required in the runtime where `/injuries/report` is executed.
 
 ### Player Game Logs
 

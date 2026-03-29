@@ -18,9 +18,13 @@ def _serialize_for_hash(params: dict | None) -> str:
     return json.dumps(params or {}, sort_keys=True, separators=(',', ':'))
 
 
+def _params_hash(params: dict | None) -> str:
+    return hashlib.sha256(_serialize_for_hash(params).encode('utf-8')).hexdigest()[:8]
+
+
 def _build_object_key(endpoint_name: str, now_utc: datetime, params: dict | None) -> str:
     """Build partitioned S3 object key optimized for incremental processing."""
-    request_hash = hashlib.sha256(_serialize_for_hash(params).encode('utf-8')).hexdigest()[:8]
+    request_hash = _params_hash(params)
     timestamp = now_utc.strftime('%Y%m%dT%H%M%SZ')
     return (
         f"raw/{endpoint_name}/"
@@ -80,12 +84,19 @@ def upload_raw_payload(endpoint_name: str, payload: dict | list, params: dict | 
     return key
 
 
-def get_latest_endpoint_payload(endpoint_name: str) -> tuple[dict | list, str]:
+def get_latest_endpoint_payload(endpoint_name: str, params: dict | None = None) -> tuple[dict | list, str]:
     bucket_name = get_s3_bucket_name()
     prefix = f'raw/{endpoint_name}/'
 
     listing = get_s3_client().list_objects_v2(Bucket=bucket_name, Prefix=prefix)
     contents = listing.get('Contents', [])
+    if params is not None:
+        expected_hash = _params_hash(params)
+        contents = [
+            item
+            for item in contents
+            if str(item.get('Key', '')).endswith(f'_{expected_hash}.json')
+        ]
     if not contents:
         raise FileNotFoundError(f'No persisted payloads found for endpoint: {endpoint_name}')
 
