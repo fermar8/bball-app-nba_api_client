@@ -1,112 +1,104 @@
-# bball-app-nba_api_client
+# DEV-17 - NBA Data Design (Minimal)
 
-A Flask-based API server that consumes the [nba_api](https://github.com/swar/nba_api) repository to provide NBA basketball data endpoints.
+This README captures the DEV-17 design decision for data we need from nba_api, how to minimize calls, and how to persist in DynamoDB.
 
-## Features
+## 1) Data Needed For The Game
 
-- RESTful API server built with Flask
-- Integration with nba_api library
-- ScheduleLeagueV2 endpoint implementation
-- Health check endpoint
-- Easy to extend with additional NBA API endpoints
+Based on GAME_ENDPOINTS.md, the required domains are:
 
-## Prerequisites
+- Schedule and results
+- Teams and identifiers
+- Player directory and roster status
+- Per-game player stats (main fantasy scoring source)
+- Player upcoming games
 
-- Python 3.8 or higher
-- pip (Python package installer)
+Important limitation:
 
-## Installation
+- nba_api does not provide official detailed injury reports.
+- Availability inside nba_api is only roster status from PlayerIndex.
 
-1. Clone the repository:
-```bash
-git clone https://github.com/fermar8/bball-app-nba_api_client.git
-cd bball-app-nba_api_client
-```
+## 2) Endpoints And Response Schemas To Use
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+Tier 1 (ID providers, low dependency):
 
-## Usage
+- ScheduleLeagueV2
+- PlayerIndex
+- Teams static module
 
-### Running the Server
+Tier 2 (depends on Tier 1 IDs):
 
-Start the Flask server:
-```bash
-python server.py
-```
+- PlayerGameLogs (requires PERSON_ID)
+- PlayerNextNGames (requires PERSON_ID)
+- TeamInfoCommon (requires team ID)
 
-The server will start on `http://localhost:5000`
+Minimal response schema definitions (essential fields only):
 
-**Development Mode**: To enable debug mode during development:
-```bash
-FLASK_DEBUG=1 python server.py
-```
+- ScheduleLeagueV2 item:
+	gameId, gameDateEst, gameDateTimeEst, gameStatus, gameStatusText, homeTeam{teamId, teamName, teamTricode, wins, losses, score}, awayTeam{teamId, teamName, teamTricode, wins, losses, score}, arenaName, arenaCity
+- PlayerIndex item:
+	PERSON_ID, PLAYER_FIRST_NAME, PLAYER_LAST_NAME, TEAM_ID, TEAM_NAME, TEAM_ABBREVIATION, JERSEY_NUMBER, POSITION, HEIGHT, WEIGHT, COUNTRY, COLLEGE, DRAFT_YEAR, DRAFT_ROUND, DRAFT_NUMBER, ROSTER_STATUS, FROM_YEAR, TO_YEAR
+- PlayerGameLogs item:
+	PLAYER_ID, PLAYER_NAME, TEAM_ID, TEAM_ABBREVIATION, GAME_ID, GAME_DATE, MATCHUP, WL, MIN, FGM, FGA, FG_PCT, FG3M, FG3A, FG3_PCT, FTM, FTA, FT_PCT, OREB, DREB, REB, AST, STL, BLK, BLKA, TOV, PF, PFD, PTS
+- PlayerNextNGames item:
+	GAME_ID, GAME_DATE, GAME_TIME, HOME_TEAM_ID, HOME_TEAM_NAME, HOME_TEAM_ABBREVIATION, HOME_WL, VISITOR_TEAM_ID, VISITOR_TEAM_NAME, VISITOR_TEAM_ABBREVIATION, VISITOR_WL
 
-> **Note**: Debug mode should NEVER be enabled in production as it poses security risks.
+Reference:
 
-### Available Endpoints
+- docs/GAME_ENDPOINTS.md
 
-#### 1. Root Endpoint
-- **URL**: `/`
-- **Method**: GET
-- **Description**: Returns API information and available endpoints
-- **Example**:
-```bash
-curl http://localhost:5000/
-```
+## 3) Strategy For Fewest nba_api Calls
 
-#### 2. Health Check
-- **URL**: `/health`
-- **Method**: GET
-- **Description**: Returns server health status
-- **Example**:
-```bash
-curl http://localhost:5000/health
-```
+Use dependency-first ingestion with incremental updates.
 
-#### 3. NBA Schedule
-- **URL**: `/schedule`
-- **Method**: GET
-- **Description**: Returns NBA league schedule data using the ScheduleLeagueV2 endpoint
-- **Query Parameters**:
-  - `season` (optional): Season year in YYYY format (e.g., 2023 for 2023-24 season)
-- **Examples**:
-```bash
-# Get current season schedule
-curl http://localhost:5000/schedule
+1. Fetch Tier 1 first (small number of calls).
+2. Cache extracted IDs (player IDs, team IDs, game IDs).
+3. For Tier 2, call only active/relevant player IDs, not full universe every run.
+4. Use date windows for PlayerGameLogs (date_from/date_to) to fetch only new games.
+5. Skip Tier 2 runs when schedule indicates no games since last successful ingestion.
+6. Store last successful watermark per dataset (for example: last_game_date_ingested).
 
-# Get specific season schedule
-curl http://localhost:5000/schedule?season=2023
-```
+This avoids full-season re-fetches and keeps API usage low.
 
-## Dependencies
+## 4) DynamoDB Persistence Proposal
 
-- **nba_api**: Official Python client for NBA statistics
-- **Flask**: Web framework for building the REST API server
+Minimal table design:
 
-## Development
+1. nba_games
+- PK: gameId (S)
+- Core fields: gameDateEst, gameStatus, homeTeam, awayTeam, scores
 
-### Project Structure
+2. nba_players
+- PK: playerId (N)
+- Core fields: name, team, position, rosterStatus, profile metadata
 
-```
-bball-app-nba_api_client/
-├── server.py              # Main Flask application
-├── requirements.txt       # Python dependencies
-├── test_integration.py    # Integration tests
-├── README.md             # This file
-└── .gitignore            # Git ignore rules
-```
+3. nba_player_game_stats
+- PK: playerId (N)
+- SK: gameDate#gameId (S)
+- Core fields: fantasy scoring stats (pts, reb, ast, stl, blk, tov, fg/ft/3pt, pfd, blka, min)
 
-## Contributing
+4. nba_player_next_games
+- PK: playerId (N)
+- SK: gameDate#gameId (S)
+- Core fields: upcoming opponent and kickoff time
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Optional GSIs (if query patterns require them):
 
-## License
+- GSI by gameId for reverse lookup of all player stats in one game
+- GSI by teamAbbreviation + gameDate for team/day views
 
-This project is open source and available under the MIT License.
+Expanded schema notes:
 
-## Acknowledgments
+- docs/DATABASE_SCHEMA.md
 
-- [nba_api](https://github.com/swar/nba_api) - The official Python client for NBA statistics
+## 5) Implementation Notes
+
+- Keep whitelist field filtering before persistence to reduce storage and write costs.
+- Persist only essential fields listed in docs/GAME_ENDPOINTS.md.
+- Use idempotent upserts keyed by PK/SK to support retries safely.
+
+## 6) Scope Boundary
+
+DEV-17 covers design and schema definition.
+
+- Included: endpoint selection, response schema references, call-minimization strategy, DynamoDB model.
+- Not included: full production ingestion orchestration and AWS trigger automation.
