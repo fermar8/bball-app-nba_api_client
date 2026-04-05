@@ -15,15 +15,16 @@ from nba_api.stats.endpoints import (
 from nba_api.stats.static import teams as teams_static
 
 from app.services.config import get_env_float, get_env_int
+from app.services.injuries_service import get_normalized_injury_report
 from app.services.schema_service import validate_payload_for_endpoint
 from app.services.storage_service import upload_raw_payload
 
 logger = logging.getLogger(__name__)
 
 
-def persist_validated_payload(endpoint_name: str, payload: dict | list, params: dict | None = None) -> str:
+def persist_validated_payload(endpoint_name: str, payload: dict | list, params: dict | None = None, source: str = 'nba_api') -> str:
     validate_payload_for_endpoint(endpoint_name=endpoint_name, payload=payload)
-    return upload_raw_payload(endpoint_name=endpoint_name, payload=payload, params=params)
+    return upload_raw_payload(endpoint_name=endpoint_name, payload=payload, params=params, source=source)
 
 
 def _call_nba_api_with_resilience(factory, call_name: str) -> dict:
@@ -344,6 +345,24 @@ def run_player_next_n_games_raw_ingestion() -> list[str]:
         date_to,
     )
     return keys
+
+
+def run_injury_report_raw_ingestion() -> str:
+    endpoint_name = 'injury_report'
+    logger.info('Starting %s raw ingestion job', endpoint_name)
+
+    injuries, raw_count = get_normalized_injury_report()
+    payload = {
+        'source': 'nbainjuries',
+        'raw_entries_count': raw_count,
+        'count': len(injuries),
+        'injuries': injuries,
+        'updated_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+    }
+
+    key = persist_validated_payload(endpoint_name=endpoint_name, payload=payload, params={}, source='nbainjuries')
+    logger.info('Completed %s raw ingestion job. s3_key=%s', endpoint_name, key)
+    return key
 
 
 def safe_job_runner(job_name: str, job_func):

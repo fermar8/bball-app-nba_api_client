@@ -4,6 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.services.config import get_env_bool, get_env_int
 from app.services.ingestion_service import (
+    run_injury_report_raw_ingestion,
     run_player_game_logs_raw_ingestion,
     run_player_index_raw_ingestion,
     run_player_next_n_games_raw_ingestion,
@@ -43,6 +44,7 @@ def start_scheduler() -> None:
     player_index_enabled = get_env_bool('PLAYER_INDEX_JOB_ENABLED', False)
     player_game_logs_enabled = get_env_bool('PLAYER_GAME_LOGS_JOB_ENABLED', False)
     player_next_games_enabled = get_env_bool('PLAYER_NEXT_GAMES_JOB_ENABLED', False)
+    injury_report_enabled = get_env_bool('INJURY_REPORT_JOB_ENABLED', False)
 
     if schedule_enabled:
         _register_cron_job(
@@ -108,6 +110,18 @@ def start_scheduler() -> None:
             default_minute=30,
         )
 
+    if injury_report_enabled:
+        _register_cron_job(
+            job_id='injury_report_raw_ingestion',
+            job_func=run_injury_report_raw_ingestion,
+            hour_env='INJURY_REPORT_JOB_HOUR_UTC',
+            minute_env='INJURY_REPORT_JOB_MINUTE_UTC',
+            default_hour=22,
+            default_minute=0,
+        )
+        if get_env_bool('INJURY_REPORT_JOB_RUN_ON_STARTUP', False):
+            safe_job_runner('injury_report_raw_ingestion_startup', run_injury_report_raw_ingestion)
+
     if (
         schedule_enabled
         or scoreboard_enabled
@@ -115,6 +129,7 @@ def start_scheduler() -> None:
         or player_index_enabled
         or player_game_logs_enabled
         or player_next_games_enabled
+        or injury_report_enabled
     ):
         scheduler.start()
         scheduler_started = True

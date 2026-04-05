@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bball-app/schemas/injury_report.schema.json",
+  "title": "InjuryReportPayload",
+  "type": "object",
+  "required": ["source", "raw_entries_count", "count", "injuries", "updated_at"],
+  "properties": {
+    "source": { "type": "string", "const": "nbainjuries" },
+    "raw_entries_count": { "type": "integer", "minimum": 0 },
+    "count": { "type": "integer", "minimum": 0 },
+    "updated_at": { "type": "string" },
+    "injuries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "player_id",
+          "player_name",
+          "team_abbr",
+          "status",
+          "availability",
+          "reason_type",
+          "reason",
+          "report_date"
+        ],
+        "properties": {
+          "player_id": { "type": ["integer", "null"] },
+          "player_name": { "type": "string" },
+          "team_abbr": { "type": ["string", "null"] },
+          "status": {
+            "type": "string",
+            "enum": ["out", "questionable", "doubtful", "probable", "available", "unknown"]
+          },
+          "availability": {
+            "type": "string",
+            "enum": ["yes", "no", "doubtful"]
+          },
+          "reason_type": {
+            "type": "string",
+            "enum": ["injury", "suspension", "personal", "coach_decision", "inactive", "unknown"]
+          },
+          "reason": { "type": ["string", "null"] },
+          "report_date": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

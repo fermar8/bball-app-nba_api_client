@@ -1,10 +1,12 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 
 def load_environment() -> None:
-    load_dotenv()
+    project_root = Path(__file__).resolve().parents[2]
+    load_dotenv(dotenv_path=project_root / '.env', override=True)
 
 
 REQUIRED_ENV_VARS = ('S3_BUCKET_NAME', 'AWS_ACCOUNT_ID')

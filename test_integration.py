@@ -283,6 +283,46 @@ class ServerRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mock_player_next_games_cls.assert_called_once_with(player_id=2544, number_of_games=4, season_all='2025-26')
 
+    @patch('app.routes.api_routes.get_normalized_injury_report')
+    def test_injuries_report_route(self, mock_get_normalized_report):
+        mock_get_normalized_report.return_value = (
+            [
+                {
+                    'player_id': 2544,
+                    'player_name': 'LeBron James',
+                    'team_abbr': 'LAL',
+                    'status': 'questionable',
+                    'availability': 'doubtful',
+                    'reason_type': 'injury',
+                    'reason': 'Right Knee; Soreness',
+                    'report_date': '2026-03-23',
+                }
+            ],
+            1,
+        )
+
+        response = self.client.get('/injuries/report?status=questionable&team=LAL')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()['data']
+        self.assertEqual(payload['source'], 'nbainjuries')
+        self.assertEqual(payload['raw_entries_count'], 1)
+        self.assertEqual(payload['count'], 1)
+        self.assertEqual(payload['injuries'][0]['player_id'], 2544)
+        self.assertEqual(payload['injuries'][0]['availability'], 'doubtful')
+        mock_get_normalized_report.assert_called_once()
+
+    @patch('app.routes.api_routes.get_normalized_injury_report')
+    def test_injuries_report_route_runtime_error(self, mock_get_normalized_report):
+        mock_get_normalized_report.side_effect = RuntimeError('nbainjuries dependency is not installed.')
+
+        response = self.client.get('/injuries/report')
+
+        self.assertEqual(response.status_code, 503)
+        payload = response.get_json()
+        self.assertFalse(payload['success'])
+        self.assertIn('nbainjuries dependency is not installed.', payload['error'])
+
 
 class RawIngestionTests(unittest.TestCase):
     @patch('app.services.storage_service.boto3.client')
@@ -409,9 +449,78 @@ class RawIngestionTests(unittest.TestCase):
         self.assertEqual(len(keys), 2)
         self.assertEqual(mock_persist.call_count, 2)
 
+    @patch('app.services.ingestion_service.persist_validated_payload')
+    @patch('app.services.ingestion_service.get_normalized_injury_report')
+    def test_run_injury_report_raw_ingestion(self, mock_get_injuries, mock_persist):
+        mock_get_injuries.return_value = (
+            [
+                {
+                    'player_id': 2544,
+                    'player_name': 'LeBron James',
+                    'team_abbr': 'LAL',
+                    'status': 'questionable',
+                    'availability': 'doubtful',
+                    'reason_type': 'injury',
+                    'reason': 'Right Knee; Soreness',
+                    'report_date': '2026-03-23',
+                }
+            ],
+            1,
+        )
+        mock_persist.return_value = 'raw/injury_report/2026/03/23/18/file.json'
+
+        key = server.run_injury_report_raw_ingestion()
+
+        self.assertTrue(key.startswith('raw/injury_report/'))
+        mock_get_injuries.assert_called_once()
+        mock_persist.assert_called_once()
+        call_kwargs = mock_persist.call_args.kwargs
+        self.assertEqual(call_kwargs['endpoint_name'], 'injury_report')
+        self.assertEqual(call_kwargs['source'], 'nbainjuries')
+
     def test_validate_invalid_schedule_payload_raises(self):
         with self.assertRaises(ValueError):
             server.persist_validated_payload('schedule_league_v2', {'invalid': 'shape'}, {})
+
+
+class InjuriesNormalizationTests(unittest.TestCase):
+    @patch('app.services.injuries_service.teams_static.get_teams')
+    @patch('app.services.injuries_service._build_player_id_index')
+    @patch('app.services.injuries_service._load_nbainjuries_payload')
+    def test_get_normalized_injury_report_maps_team_abbreviation_and_player_name(
+        self,
+        mock_load_payload,
+        mock_build_player_id_index,
+        mock_get_teams,
+    ):
+        from app.services.injuries_service import get_normalized_injury_report
+
+        mock_load_payload.return_value = [
+            {
+                'Player Name': 'James, LeBron',
+                'Team': 'Los Angeles Lakers',
+                'Current Status': 'Questionable',
+                'Reason': 'Injury/Illness - Left Foot; Soreness',
+                'Game Date': '03/23/2026',
+            }
+        ]
+        mock_build_player_id_index.return_value = {'lebron james': 2544}
+        mock_get_teams.return_value = [
+            {
+                'full_name': 'Los Angeles Lakers',
+                'abbreviation': 'LAL',
+                'nickname': 'Lakers',
+                'city': 'Los Angeles',
+            }
+        ]
+
+        injuries, raw_count = get_normalized_injury_report()
+
+        self.assertEqual(raw_count, 1)
+        self.assertEqual(len(injuries), 1)
+        self.assertEqual(injuries[0]['player_id'], 2544)
+        self.assertEqual(injuries[0]['player_name'], 'LeBron James')
+        self.assertEqual(injuries[0]['team_abbr'], 'LAL')
 
 
 class SchedulerTests(unittest.TestCase):

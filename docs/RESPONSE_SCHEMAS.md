@@ -37,6 +37,7 @@ The runtime validator reads JSON Schema files from:
 - `docs/schemas/player_index.schema.json`
 - `docs/schemas/player_game_logs.schema.json`
 - `docs/schemas/player_next_n_games.schema.json`
+- `docs/schemas/injury_report.schema.json`
 - `docs/schemas/teams_static.schema.json`
 
 Current validator coverage:
@@ -59,6 +60,7 @@ Current validator coverage:
     "/scoreboard": "Get NBA scoreboard data",
     "/teams": "Get NBA teams list with ids",
     "/players/index": "Get player index data",
+    "/injuries/report": "Get official injury report (nbainjuries) normalized for frontend",
     "/players/game-logs": "Get player game logs",
     "/players/next-games": "Get next N games for a player",
     "/health": "Health check endpoint"
@@ -555,6 +557,40 @@ Query params:
   }
 }
 ```
+
+## GET /injuries/report
+
+Performs a live `nbainjuries` call at request time and returns normalized injuries.
+
+```json
+{
+  "success": true,
+  "data": {
+    "source": "nbainjuries",
+    "raw_entries_count": 120,
+    "count": 2,
+    "updated_at": "2026-03-23T18:05:00Z",
+    "injuries": [
+      {
+        "player_id": 2544,
+        "player_name": "LeBron James",
+        "team_abbr": "LAL",
+        "status": "questionable",
+        "availability": "doubtful",
+        "reason_type": "injury",
+        "reason": "Right Knee; Soreness",
+        "report_date": "2026-03-23"
+      }
+    ]
+  }
+}
+```
+
+Notes:
+
+- Optional query params: `status` and `team`.
+- `player_id` is matched from `PlayerIndex`; when name matching fails, `player_id` is `null`.
+- Java is required in the runtime where this endpoint is executed.
 
 Validation error example:
 

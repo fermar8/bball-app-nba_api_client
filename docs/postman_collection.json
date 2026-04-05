@@ -336,6 +336,44 @@
           ]
         }
       }
+    },
+    {
+      "name": "Injuries Report - Default",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/injuries/report",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "injuries",
+            "report"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Injuries Report - Persist Raw",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/injuries/report?persist_raw=true",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "injuries",
+            "report"
+          ],
+          "query": [
+            {
+              "key": "persist_raw",
+              "value": "true"
+            }
+          ]
+        }
+      }
     }
   ]
 }

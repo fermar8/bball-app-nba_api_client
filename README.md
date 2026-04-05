@@ -13,7 +13,11 @@ Flask server that consumes [nba_api](https://github.com/swar/nba_api) and suppor
 ## Features
 
 - `/schedule` endpoint backed by `ScheduleLeagueV2`
-- `/scoreboard` endpoint backed by `ScoreboardV2`
+- `/teams` endpoint backed by `teams_static`
+- `/players/index` endpoint backed by `PlayerIndex` (roster status only)
+- `/injuries/report` endpoint performing a live official injury fetch (`nbainjuries`)
+- `/players/game-logs` endpoint backed by `PlayerGameLogs`
+- `/players/next-games` endpoint backed by `PlayerNextNGames`
 - `/health` endpoint
 - Daily in-server scheduler (env-controlled)
 - Raw payload upload to S3 (no DynamoDB writes)
@@ -22,6 +26,7 @@ Flask server that consumes [nba_api](https://github.com/swar/nba_api) and suppor
 ## Prerequisites
 
 - Python 3.10+
+- Java 8+ (required only for the injury ingestion job that runs `nbainjuries`)
 - AWS credentials available to the runtime (for S3 put operations)
 
 ## Installation
@@ -94,6 +99,13 @@ Participant discovery controls:
 - `PLAYER_PARTICIPANT_LOOKBACK_DAYS` (default: `1`, means yesterday only)
 - `PLAYER_JOB_MAX_PLAYERS_PER_RUN` (default: `150`)
 
+### Injury report job (`nbainjuries`)
+
+- `INJURY_REPORT_JOB_ENABLED` (`true/false`, default: `false`)
+- `INJURY_REPORT_JOB_HOUR_UTC` (default: `22`)
+- `INJURY_REPORT_JOB_MINUTE_UTC` (default: `0`)
+- `INJURY_REPORT_JOB_RUN_ON_STARTUP` (`true/false`, default: `false`)
+
 nba_api resilience controls:
 
 - `NBA_API_TIMEOUT_SECONDS` (default: `15`)
@@ -159,6 +171,35 @@ Base URL (local): `http://localhost:5000`
 - `GET /players/index`
 - Optional query param: `persist_raw=true` (validate + upload this response to S3)
 - Example: `GET http://localhost:5000/players/index`
+
+### Official Injury Report
+
+- `GET /injuries/report`
+- Optional query params:
+  - `status` (one of `out`, `questionable`, `doubtful`, `probable`, `available`, `unknown`)
+  - `team` (team abbreviation, e.g. `LAL`)
+  - `persist_raw=true` (validate + upload this response to S3)
+- Example: `GET http://localhost:5000/injuries/report?status=questionable&team=LAL`
+
+Data source behavior:
+
+- Request-time API performs a live `nbainjuries` call and returns normalized injuries.
+- This endpoint does not require a preexisting injury snapshot in S3.
+
+Response fields:
+
+- `source`: always `nbainjuries`
+- `raw_entries_count`: total entries read from upstream report
+- `count`: entries returned after optional filters
+- `injuries[]`: normalized player-level injury entries with `player_id`, `status`, `availability`, and `reason`
+
+Primary usage note:
+
+- This is the primary endpoint for pregame fantasy injury status and availability.
+
+Runtime note:
+
+- Java is required in the runtime where `/injuries/report` is executed.
 
 ### Player Game Logs
 
@@ -237,6 +278,7 @@ Validation source of truth:
 - `docs/schemas/player_index.schema.json`
 - `docs/schemas/player_game_logs.schema.json`
 - `docs/schemas/player_next_n_games.schema.json`
+- `docs/schemas/injury_report.schema.json`
 - `docs/schemas/teams_static.schema.json`
 
 Detailed shape docs:

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 from nba_api.stats.endpoints import (
@@ -12,6 +12,7 @@ from nba_api.stats.static import teams as teams_static
 
 from app.services.config import endpoint_persist_enabled, get_missing_required_env_vars
 from app.services.ingestion_service import persist_validated_payload
+from app.services.injuries_service import get_normalized_injury_report
 from app.utils.request_utils import parse_int_query_param, should_persist_raw_from_request
 
 api_blueprint = Blueprint('api', __name__)
@@ -25,6 +26,18 @@ def maybe_persist_endpoint_payload(endpoint_name: str, payload: dict | list, par
     return persist_validated_payload(endpoint_name=endpoint_name, payload=payload, params=params)
 
 
+def _apply_injuries_filters(injuries: list[dict], status_filter: str | None, team_filter: str | None) -> list[dict]:
+    filtered = injuries
+    if status_filter:
+        status_filter_l = status_filter.strip().lower()
+        filtered = [item for item in filtered if (item.get('status') or '').lower() == status_filter_l]
+
+    if team_filter:
+        team_filter_u = team_filter.strip().upper()
+        filtered = [item for item in filtered if (item.get('team_abbr') or '').upper() == team_filter_u]
+    return filtered
+
+
 @api_blueprint.route('/')
 def index():
     return jsonify(
@@ -36,6 +49,7 @@ def index():
                 '/scoreboard': 'Get NBA scoreboard data',
                 '/teams': 'Get NBA teams list with ids',
                 '/players/index': 'Get player index data',
+                '/injuries/report': 'Get official injury report with live nbainjuries call',
                 '/players/game-logs': 'Get player game logs',
                 '/players/next-games': 'Get next N games for a player',
                 '/health': 'Health check endpoint',
@@ -250,5 +264,39 @@ def get_player_next_n_games():
         if raw_key:
             response['raw_s3_key'] = raw_key
         return jsonify(response)
+    except Exception as exc:
+        return jsonify({'success': False, 'error': str(exc)}), 500
+
+
+@api_blueprint.route('/injuries/report')
+def get_injuries_report():
+    try:
+        status_filter = request.args.get('status')
+        team_filter = request.args.get('team')
+
+        injuries, raw_count = get_normalized_injury_report()
+        injuries = _apply_injuries_filters(injuries=injuries, status_filter=status_filter, team_filter=team_filter)
+
+        data = {
+            'source': 'nbainjuries',
+            'raw_entries_count': raw_count,
+            'count': len(injuries),
+            'injuries': injuries,
+            'updated_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+        }
+
+        params: dict[str, str] = {}
+        if status_filter:
+            params['status'] = status_filter
+        if team_filter:
+            params['team'] = team_filter
+
+        raw_key = maybe_persist_endpoint_payload('injury_report', data, params)
+        response = {'success': True, 'data': data}
+        if raw_key:
+            response['raw_s3_key'] = raw_key
+        return jsonify(response)
+    except RuntimeError as exc:
+        return jsonify({'success': False, 'error': str(exc)}), 503
     except Exception as exc:
         return jsonify({'success': False, 'error': str(exc)}), 500
