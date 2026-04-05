@@ -1,83 +1,33 @@
-"""
-NBA API Client Server
-A Flask server that consumes the nba_api library to provide basketball data endpoints.
-"""
+"""Application entrypoint for the NBA API client server."""
 
-from flask import Flask, jsonify, request
-from nba_api.stats.endpoints import ScheduleLeagueV2
-from datetime import datetime
+import logging
 
-app = Flask(__name__)
+from app import create_app
+from app.services.config import get_missing_required_env_vars, is_debug_mode, should_start_scheduler
+from app.services.ingestion_service import (
+    persist_validated_payload,
+    run_injury_report_raw_ingestion,
+    run_player_game_logs_raw_ingestion,
+    run_player_index_raw_ingestion,
+    run_player_next_n_games_raw_ingestion,
+    run_schedule_raw_ingestion,
+    run_scoreboard_raw_ingestion,
+    run_teams_raw_ingestion,
+    safe_job_runner,
+)
+from app.services.scheduler_service import scheduler, start_scheduler
+from app.services.storage_service import get_s3_client, upload_raw_payload
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
-@app.route('/')
-def index():
-    """Root endpoint with API information."""
-    return jsonify({
-        'name': 'NBA API Client Server',
-        'version': '1.0.0',
-        'endpoints': {
-            '/schedule': 'Get NBA league schedule',
-            '/health': 'Health check endpoint'
-        }
-    })
-
-
-@app.route('/health')
-def health():
-    """Health check endpoint."""
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat()
-    })
-
-
-@app.route('/schedule')
-def get_schedule():
-    """
-    Get NBA league schedule using ScheduleLeagueV2 endpoint.
-    
-    Query Parameters:
-    - season: Season in format YYYY (default: current season)
-    
-    Example: /schedule?season=2023
-    """
-    try:
-        # Get season parameter from query string (optional)
-        season = request.args.get('season', None)
-        
-        # Initialize the ScheduleLeagueV2 endpoint
-        if season:
-            try:
-                # Validate season is a valid year
-                year = int(season)
-                schedule = ScheduleLeagueV2(season=f"{year}-{str(year + 1)[-2:]}")
-            except ValueError:
-                return jsonify({
-                    'success': False,
-                    'error': 'Invalid season parameter. Must be a valid year (e.g., 2023)'
-                }), 400
-        else:
-            schedule = ScheduleLeagueV2()
-        
-        # Get the schedule data
-        schedule_data = schedule.get_dict()
-        
-        return jsonify({
-            'success': True,
-            'data': schedule_data
-        })
-    
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+app = create_app()
 
 
 if __name__ == '__main__':
-    # Debug mode is disabled by default for security
-    # Enable only in development by setting environment variable: FLASK_DEBUG=1
-    import os
-    debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
-    app.run(host='0.0.0.0', port=5000, debug=debug_mode)
+    missing_vars = get_missing_required_env_vars()
+    if missing_vars:
+        logging.warning('Missing required env vars for storage: %s', ','.join(missing_vars))
+
+    if should_start_scheduler():
+        start_scheduler()
+    app.run(host='0.0.0.0', port=5000, debug=is_debug_mode())

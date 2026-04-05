@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bball-app/schemas/player_index.schema.json",
+  "title": "PlayerIndexPayload",
+  "type": "object",
+  "required": ["resource", "parameters", "resultSets"],
+  "properties": {
+    "resource": {},
+    "parameters": { "type": "object" },
+    "resultSets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "headers", "rowSet"],
+        "properties": {
+          "name": { "type": ["string", "null"] },
+          "headers": { "type": "array" },
+          "rowSet": { "type": "array" }
+        },
+        "additionalProperties": true
+      },
+      "contains": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "const": "PlayerIndex" }
+        }
+      },
+      "minContains": 1
+    }
+  },
+  "additionalProperties": true
+}

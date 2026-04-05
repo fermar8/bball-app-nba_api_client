@@ -1,0 +1,379 @@
+{
+  "info": {
+    "_postman_id": "1b5a5936-6f8f-4fef-a690-3c640c4f6d26",
+    "name": "BBall NBA API Client",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Root",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/"
+      }
+    },
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/health"
+      }
+    },
+    {
+      "name": "Health Config",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/health/config"
+      }
+    },
+    {
+      "name": "Schedule - Default",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/schedule"
+      }
+    },
+    {
+      "name": "Schedule - Season",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/schedule?season=2023",
+          "host": ["{{base_url}}"],
+          "path": ["schedule"],
+          "query": [
+            {
+              "key": "season",
+              "value": "2023"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Schedule - Persist Raw",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/schedule?season=2023&persist_raw=true",
+          "host": ["{{base_url}}"],
+          "path": ["schedule"],
+          "query": [
+            {
+              "key": "season",
+              "value": "2023"
+            },
+            {
+              "key": "persist_raw",
+              "value": "true"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Scoreboard - Default",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/scoreboard"
+      }
+    },
+    {
+      "name": "Scoreboard - Game Date",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/scoreboard?game_date=03/06/2026",
+          "host": ["{{base_url}}"],
+          "path": ["scoreboard"],
+          "query": [
+            {
+              "key": "game_date",
+              "value": "03/06/2026"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Scoreboard - Persist Raw",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/scoreboard?game_date=03/06/2026&persist_raw=true",
+          "host": ["{{base_url}}"],
+          "path": ["scoreboard"],
+          "query": [
+            {
+              "key": "game_date",
+              "value": "03/06/2026"
+            },
+            {
+              "key": "persist_raw",
+              "value": "true"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Teams - Default",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/teams"
+      }
+    },
+    {
+      "name": "Teams - Persist Raw",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/teams?persist_raw=true",
+          "host": ["{{base_url}}"],
+          "path": ["teams"],
+          "query": [
+            {
+              "key": "persist_raw",
+              "value": "true"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Player Index - Active (default)",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/players/index"
+      }
+    },
+    {
+      "name": "Player Index - All",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/players/index?active=0",
+          "host": ["{{base_url}}"],
+          "path": ["players", "index"],
+          "query": [
+            {
+              "key": "active",
+              "value": "0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Player Index - Persist Raw",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/players/index?active=1&persist_raw=true",
+          "host": ["{{base_url}}"],
+          "path": ["players", "index"],
+          "query": [
+            {
+              "key": "active",
+              "value": "1"
+            },
+            {
+              "key": "persist_raw",
+              "value": "true"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Player Game Logs - By Player + Season",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/players/game-logs?player_id=2544&season=2025-26",
+          "host": ["{{base_url}}"],
+          "path": ["players", "game-logs"],
+          "query": [
+            {
+              "key": "player_id",
+              "value": "2544"
+            },
+            {
+              "key": "season",
+              "value": "2025-26"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Player Game Logs - Date Range + Season",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/players/game-logs?date_from=03/07/2026&date_to=03/07/2026&season=2025-26",
+          "host": ["{{base_url}}"],
+          "path": ["players", "game-logs"],
+          "query": [
+            {
+              "key": "date_from",
+              "value": "03/07/2026"
+            },
+            {
+              "key": "date_to",
+              "value": "03/07/2026"
+            },
+            {
+              "key": "season",
+              "value": "2025-26"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Player Game Logs - Date Range Persist Raw",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/players/game-logs?date_from=03/07/2026&date_to=03/07/2026&season=2025-26&persist_raw=true",
+          "host": ["{{base_url}}"],
+          "path": ["players", "game-logs"],
+          "query": [
+            {
+              "key": "date_from",
+              "value": "03/07/2026"
+            },
+            {
+              "key": "date_to",
+              "value": "03/07/2026"
+            },
+            {
+              "key": "season",
+              "value": "2025-26"
+            },
+            {
+              "key": "persist_raw",
+              "value": "true"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Player Next Games - Default",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/players/next-games?player_id=2544",
+          "host": ["{{base_url}}"],
+          "path": ["players", "next-games"],
+          "query": [
+            {
+              "key": "player_id",
+              "value": "2544"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Player Next Games - Custom",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/players/next-games?player_id=2544&number_of_games=5&season=2025-26",
+          "host": ["{{base_url}}"],
+          "path": ["players", "next-games"],
+          "query": [
+            {
+              "key": "player_id",
+              "value": "2544"
+            },
+            {
+              "key": "number_of_games",
+              "value": "5"
+            },
+            {
+              "key": "season",
+              "value": "2025-26"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Player Next Games - Persist Raw",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/players/next-games?player_id=2544&number_of_games=5&season=2025-26&persist_raw=true",
+          "host": ["{{base_url}}"],
+          "path": ["players", "next-games"],
+          "query": [
+            {
+              "key": "player_id",
+              "value": "2544"
+            },
+            {
+              "key": "number_of_games",
+              "value": "5"
+            },
+            {
+              "key": "season",
+              "value": "2025-26"
+            },
+            {
+              "key": "persist_raw",
+              "value": "true"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Injuries Report - Default",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/injuries/report",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "injuries",
+            "report"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Injuries Report - Persist Raw",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/injuries/report?persist_raw=true",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "injuries",
+            "report"
+          ],
+          "query": [
+            {
+              "key": "persist_raw",
+              "value": "true"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
