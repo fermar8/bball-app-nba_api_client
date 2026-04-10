@@ -164,7 +164,7 @@ Use cases:
 
 ---
 
-## Table 2: `nba_teams`
+## Table 2: `teams_static`
 
 Purpose: minimal team directory for the MVP.
 
@@ -181,24 +181,19 @@ No GSI is required for the MVP.
 | Field              | Type   | Notes                  |
 | ------------------ | ------ | ---------------------- |
 | `teamId`           | Number | Stable NBA team id     |
-| `teamName`         | String | Full name              |
-| `teamAbbreviation` | String | Example: `LAL`         |
+| `fullName`         | String | Full name              |
+| `abbreviation` | String | Example: `LAL`         |
 | `nickname`         | String | Example: `Lakers`      |
-| `city`             | String | Example: `Los Angeles` |
-| `state`            | String | Optional for MVP UI    |
-| `yearFounded`      | Number | Optional metadata      |
+
 
 ### Example item
 
 ```json
 {
   "teamId": 1610612747,
-  "teamName": "Los Angeles Lakers",
-  "teamAbbreviation": "LAL",
+  "fullName": "Los Angeles Lakers",
+  "abbreviation": "LAL",
   "nickname": "Lakers",
-  "city": "Los Angeles",
-  "state": "California",
-  "yearFounded": 1948
 }
 ```
 
