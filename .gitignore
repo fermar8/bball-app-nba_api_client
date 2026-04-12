@@ -1,3 +1,6 @@
+# Exploration output files (generated data)
+exploration_output/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

@@ -1,4 +1,4 @@
-# bball-app-nba_api_client
+# DEV-17 - NBA Data Design (Minimal)
 
 Flask server that consumes [nba_api](https://github.com/swar/nba_api) and supports two things:
 
@@ -10,7 +10,7 @@ Flask server that consumes [nba_api](https://github.com/swar/nba_api) and suppor
 - AWS Account: from `AWS_ACCOUNT_ID`
 - Raw data bucket: from `S3_BUCKET_NAME`
 
-## Features
+## 1) Data Needed For The Game
 
 - `/schedule` endpoint backed by `ScheduleLeagueV2`
 - `/teams` endpoint backed by `teams_static`
@@ -23,13 +23,18 @@ Flask server that consumes [nba_api](https://github.com/swar/nba_api) and suppor
 - Raw payload upload to S3 (no DynamoDB writes)
 - Mocked unit tests for route + ingestion behavior
 
-## Prerequisites
+- Schedule and results
+- Teams and identifiers
+- Player directory and roster status
+- Per-game player stats (main fantasy scoring source)
+- Player upcoming games
 
 - Python 3.10+
 - Java 8+ (required only for the injury ingestion job that runs `nbainjuries`)
 - AWS credentials available to the runtime (for S3 put operations)
 
-## Installation
+- nba_api does not provide official detailed injury reports.
+- Availability inside nba_api is only roster status from PlayerIndex.
 
 ```powershell
 py -m pip install -r requirements.txt
