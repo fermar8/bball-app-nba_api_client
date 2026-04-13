@@ -102,18 +102,32 @@ Purpose: store regular-season NBA-vs-NBA games from schedule_league_v2, with lea
 
 ### Indexes
 
-- None
+- byHomeTeamDateTime
+  - PK: homeTeamId (Number)
+  - SK: gameDateTimeEst (String)
+
+- byAwayTeamDateTime
+  - PK: awayTeamId (Number)
+  - SK: gameDateTimeEst (String)
+
+- byLeagueDateTime
+  - PK: leagueKey (String)
+  - SK: gameDateTimeEst (String)
 
 Use cases:
 
-- Get a game by id
-- Scan table for full dataset when needed (small/controlled workload)
+- Query all games for a team in a timeframe:
+  - query byHomeTeamDateTime and byAwayTeamDateTime for the same team id and time range
+  - merge and sort by gameDateTimeEst
+- Query all games in any timeframe:
+  - query byLeagueDateTime with leagueKey = NBA and sort key between start/end
 
 ### Attributes
 
 | Field             | Type   | Notes                        |
 | ----------------- | ------ | ---------------------------- |
 | `gameId`          | String | Stable NBA game identifier   |
+| `leagueKey`       | String | Constant value: NBA (technical partition key for global timeframe queries) |
 | `season`          | String | Example: `2025-26`           |
 | `gameDateEst`     | String | Date only                    |
 | `gameDateTimeEst` | String | Date-time used for sorting   |
@@ -135,17 +149,19 @@ Use cases:
 | `arenaCity`       | String | Optional                     |
 | `dataHash`        | String | SHA-256 hash of persisted payload, used to skip unchanged writes |
 
+
 Notes:
 
 - Optional fields are only written when present (sparse item shape).
-- No season field is persisted.
-- Upsert is conditional: write occurs only for new gameId or when dataHash changes.
+- One item per gameId (no duplicated items for home/away).
+- Upsert is conditional: write occurs only for new gameId or changed dataHash.
 
 ### Example item
 
 ```json
 {
   "gameId": "0022500001",
+  "leagueKey": "NBA",
   "season": "2025-26",
   "gameDateEst": "2025-10-22",
   "gameDateTimeEst": "2025-10-22T19:30:00Z",
