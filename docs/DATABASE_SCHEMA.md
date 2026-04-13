@@ -94,7 +94,7 @@ These are the core reads the schema must optimize.
 
 ## Table 1: `nba_games`
 
-Purpose: full NBA calendar, game state, tipoff time, and final result when available.
+Purpose: store regular-season NBA-vs-NBA games from schedule_league_v2, with lean attributes for schedule/state/score and change-detection metadata.
 
 ### Keys
 
@@ -102,13 +102,12 @@ Purpose: full NBA calendar, game state, tipoff time, and final result when avail
 
 ### Indexes
 
-- `GSI1PK = season`
-- `GSI1SK = gameDateTimeEst`
+- None
 
 Use cases:
 
-- query full season calendar in chronological order
-- query future games from a given date
+- Get a game by id
+- Scan table for full dataset when needed (small/controlled workload)
 
 ### Attributes
 
@@ -134,6 +133,13 @@ Use cases:
 | `awayTeamScore`   | Number | Nullable before game ends    |
 | `arenaName`       | String | Optional                     |
 | `arenaCity`       | String | Optional                     |
+| `dataHash`        | String | SHA-256 hash of persisted payload, used to skip unchanged writes |
+
+Notes:
+
+- Optional fields are only written when present (sparse item shape).
+- No season field is persisted.
+- Upsert is conditional: write occurs only for new gameId or when dataHash changes.
 
 ### Example item
 
@@ -158,7 +164,8 @@ Use cases:
   "awayTeamLosses": 1,
   "awayTeamScore": 108,
   "arenaName": "Crypto.com Arena",
-  "arenaCity": "Los Angeles"
+  "arenaCity": "Los Angeles",
+  "dataHash": "9e5fd6d8ef9d8eb0b95d7a7d7c4d2aa4f5ce2d4f0d80ec3a0f5a6a8bd3b7c2a1"
 }
 ```
 
