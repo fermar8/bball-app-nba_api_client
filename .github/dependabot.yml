@@ -6,37 +6,8 @@ updates:
       interval: "daily"
     cooldown:
       default-days: 10
-    allow:
-      - dependency-type: "all"
-    open-pull-requests-limit: 5
-    pull-request-branch-name:
-      separator: "/"
-    commit-message:
-      prefix: "chore(deps)"
-      prefix-development: "chore(deps-dev)"
-      include: "scope"
-    reviewers:
-      - "fermar8"
-    assignees:
-      - "fermar8"
-    labels:
-      - "dependencies"
-      - "python"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
-    open-pull-requests-limit: 5
-    pull-request-branch-name:
-      separator: "/"
-    commit-message:
-      prefix: "ci(actions)"
-      include: "scope"
-    reviewers:
-      - "fermar8"
-    assignees:
-      - "fermar8"
-    labels:
-      - "dependencies"
-      - "github-actions"
