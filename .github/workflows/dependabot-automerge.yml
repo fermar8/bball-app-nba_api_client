@@ -1,0 +1,114 @@
+name: Dependabot - Auto Merge
+
+on:
+  workflow_run:
+    workflows: ["Dependabot - Build and Test"]
+    types:
+      - completed
+
+jobs:
+  auto-merge:
+    name: Auto-merge Dependabot PR
+    runs-on: ubuntu-latest
+    # Only run if the build workflow succeeded and it's a Dependabot PR
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.actor == 'dependabot[bot]'
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6.0.2
+
+      - name: Get PR details
+        id: pr-details
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pulls = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:${context.payload.workflow_run.head_branch}`
+            });
+
+            if (pulls.data.length === 0) {
+              core.setFailed('No open PR found for this branch');
+              return;
+            }
+
+            const pr = pulls.data[0];
+            core.setOutput('pr-number', pr.number);
+            core.setOutput('pr-title', pr.title);
+            core.setOutput('pr-user', pr.user.login);
+
+            return pr;
+
+      - name: Check if major version update
+        id: check-version
+        run: |
+          PR_TITLE="${{ steps.pr-details.outputs.pr-title }}"
+          echo "PR Title: $PR_TITLE"
+
+          # Check for major version updates (e.g., "Bump package from 1.x.x to 2.0.0")
+          # Pattern: looks for version jumps where the first number increases
+          if echo "$PR_TITLE" | grep -iE "bump.*from [0-9]+\.[0-9]+\.[0-9]+ to [0-9]+\.0\.0" | grep -vE "from ([0-9]+)\.[0-9]+\.[0-9]+ to \1\."; then
+            echo "is-major=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Major version update detected - skipping auto-merge"
+          else
+            echo "is-major=false" >> $GITHUB_OUTPUT
+            echo "✅ Minor/patch update - proceeding with auto-merge"
+          fi
+
+      - name: Enable auto-merge for Dependabot PR
+        if: steps.check-version.outputs.is-major == 'false' && steps.pr-details.outputs.pr-user == 'dependabot[bot]'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr-details.outputs.pr-number }}
+        run: |
+          echo "Enabling auto-merge for PR #$PR_NUMBER"
+          gh pr merge $PR_NUMBER --auto --squash --repo ${{ github.repository }}
+
+      - name: Comment on major version PR
+        if: steps.check-version.outputs.is-major == 'true'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const prNumber = ${{ steps.pr-details.outputs.pr-number }};
+            const comment = `### ⚠️  Major Version Update Detected
+
+            This PR contains a major version update that requires manual review before merging.
+
+            **Why?** Major version updates may include breaking changes that could affect the application.
+
+            **Next steps:**
+            1. Review the changelog for breaking changes
+            2. Run additional tests if needed
+            3. Manually approve and merge when ready
+
+            Build and tests have passed ✅`;
+
+            github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Approve Dependabot PR
+        if: steps.check-version.outputs.is-major == 'false' && steps.pr-details.outputs.pr-user == 'dependabot[bot]'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const prNumber = ${{ steps.pr-details.outputs.pr-number }};
+
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              event: 'APPROVE',
+              body: '✅ Auto-approved by Dependabot workflow - all checks passed'
+            });
