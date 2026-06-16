@@ -35,8 +35,8 @@ nba_players
 
 nba_player_game_stats
   PK: playerId
-  SK: gameDate#gameId
-  GSI: gameId -> pts
+  SK: gameDateGameId  (value format: gameDate#gameId, e.g. 2025-10-22#0022500001)
+  GSI byGameIdPts: gameId -> pts
 
 nba_player_season_stats
   PK: playerId
@@ -178,13 +178,12 @@ No GSI is required for the MVP.
 
 ### Attributes
 
-| Field              | Type   | Notes                  |
-| ------------------ | ------ | ---------------------- |
-| `teamId`           | Number | Stable NBA team id     |
-| `fullName`         | String | Full name              |
+| Field          | Type   | Notes                  |
+| -------------- | ------ | ---------------------- |
+| `teamId`       | Number | Stable NBA team id     |
+| `fullName`     | String | Full name              |
 | `abbreviation` | String | Example: `LAL`         |
-| `nickname`         | String | Example: `Lakers`      |
-
+| `nickname`     | String | Example: `Lakers`      |
 
 ### Example item
 
@@ -193,7 +192,7 @@ No GSI is required for the MVP.
   "teamId": 1610612747,
   "fullName": "Los Angeles Lakers",
   "abbreviation": "LAL",
-  "nickname": "Lakers",
+  "nickname": "Lakers"
 }
 ```
 
@@ -286,7 +285,7 @@ Purpose: one row per player per game.
 ### Keys
 
 - PK: `playerId` (Number)
-- SK: `gameDate#gameId` (String)
+- SK: `gameDateGameId` (String)
 
 Example sort key:
 
@@ -294,75 +293,97 @@ Example sort key:
 2025-10-22#0022500001
 ```
 
+The sort key attribute name is `gameDateGameId`; its value is always `{gameDate}#{gameId}`.
+
 ### Indexes
 
-- `GSI1PK = gameId`
-- `GSI1SK = pts`
+- `GSI byGameIdPts`: `GSI1PK = gameId`, `GSI1SK = pts`
 
 Use cases:
 
-- fetch all games for one player ordered by date
-- fetch all player rows for one game
-
-If game leaders need strict descending order, store a second sortable numeric field pattern later. It is not required to define that optimization for the MVP schema document.
+- fetch all games for one player ordered by date (table query by PK)
+- fetch all player rows for one game ordered by points (GSI query by gameId)
 
 ### Attributes
 
-| Field              | Type   | Notes                                               |
-| ------------------ | ------ | --------------------------------------------------- |
-| `playerId`         | Number |                                                     |
-| `gameDate`         | String | Date only                                           |
-| `gameId`           | String |                                                     |
-| `season`           | String | Example: `2025-26`                                  |
-| `teamId`           | Number |                                                     |
-| `teamAbbreviation` | String |                                                     |
-| `matchup`          | String | Example: `LAL vs. BOS`                              |
-| `winLoss`          | String | `W` or `L`                                          |
-| `minutes`          | String | Store canonical display value from source           |
-| `minutesDecimal`   | Number | Optional numeric projection for sorting/aggregation |
-| `pts`              | Number |                                                     |
-| `fgm`              | Number | Total field goals made                              |
-| `fga`              | Number | Total field goals attempted                         |
-| `fg2m`             | Number | Derived: `fgm - fg3m`                               |
-| `fg2a`             | Number | Derived: `fga - fg3a`                               |
-| `fg3m`             | Number |                                                     |
-| `fg3a`             | Number |                                                     |
-| `ftm`              | Number |                                                     |
-| `fta`              | Number |                                                     |
-| `oreb`             | Number |                                                     |
-| `dreb`             | Number |                                                     |
-| `reb`              | Number |                                                     |
-| `ast`              | Number |                                                     |
-| `stl`              | Number |                                                     |
-| `tov`              | Number |                                                     |
-| `blk`              | Number |                                                     |
-| `blka`             | Number | Blocks against                                      |
-| `pf`               | Number | Fouls committed                                     |
-| `pfd`              | Number | Fouls received                                      |
+| Field              | Type   | Notes                                                      |
+| ------------------ | ------ | ---------------------------------------------------------- |
+| `playerId`         | Number | Stable NBA player id                                       |
+| `playerName`       | String | Denormalized display name                                  |
+| `nickname`         | String | Short name from source                                     |
+| `teamId`           | Number |                                                            |
+| `teamAbbreviation` | String |                                                            |
+| `teamName`         | String | Denormalized for display without a join                    |
+| `gameId`           | String |                                                            |
+| `gameDateGameId`   | String | Composite sort key: `gameDate#gameId`                      |
+| `gameDate`         | String | Date only, e.g. `2025-10-22`                               |
+| `matchup`          | String | Example: `LAL vs. BOS`                                     |
+| `winLoss`          | String | `W` or `L`                                                 |
+| `minutes`          | String | Canonical display value from source, e.g. `35:28`          |
+| `minutesDecimal`   | Number | Numeric projection of minutes for sorting/aggregation      |
+| `seasonYear`       | String | Example: `2025-26`                                         |
+| `pts`              | Number |                                                            |
+| `fgm`              | Number | Total field goals made                                     |
+| `fga`              | Number | Total field goals attempted                                |
+| `fgPct`            | Number | FG percentage (nullable)                                   |
+| `fg3m`             | Number |                                                            |
+| `fg3a`             | Number |                                                            |
+| `fg3Pct`           | Number | 3PT percentage (nullable)                                  |
+| `ftm`              | Number |                                                            |
+| `fta`              | Number |                                                            |
+| `ftPct`            | Number | FT percentage (nullable)                                   |
+| `oreb`             | Number |                                                            |
+| `dreb`             | Number |                                                            |
+| `reb`              | Number |                                                            |
+| `ast`              | Number |                                                            |
+| `stl`              | Number |                                                            |
+| `tov`              | Number |                                                            |
+| `blk`              | Number |                                                            |
+| `blka`             | Number | Blocks against                                             |
+| `pf`               | Number | Fouls committed                                            |
+| `pfd`              | Number | Fouls received                                             |
+| `plusMinus`        | Number | Plus/minus for the game (nullable)                         |
+| `nbaFantasyPts`    | Number | NBA fantasy score (nullable); key field for fantasy use    |
+| `wnbaFantasyPts`   | Number | WNBA fantasy score (nullable)                              |
+| `dd2`              | Number | Double-double flag (0 or 1)                                |
+| `td3`              | Number | Triple-double flag (0 or 1)                                |
+| `availableFlag`    | Number | Availability flag from source (0 or 1)                     |
+| `minSec`           | String | Raw `MIN_SEC` string from source, e.g. `35:28`             |
+| `teamCount`        | Number | Number of teams the player appeared for in the game        |
+
+> Note: `fg2m` and `fg2a` (previously listed as derived fields) are not persisted. The
+> `PlayerGameLogs` source does not supply them directly and the derivation would require
+> coupling this table to `fg3m`/`fg3a` at write time. They can be derived client-side
+> as `fgm - fg3m` and `fga - fg3a` when needed.
 
 ### Example item
 
 ```json
 {
   "playerId": 2544,
-  "gameDate": "2025-10-22",
-  "gameId": "0022500001",
-  "season": "2025-26",
+  "playerName": "LeBron James",
+  "nickname": "LeBron",
   "teamId": 1610612747,
   "teamAbbreviation": "LAL",
+  "teamName": "Los Angeles Lakers",
+  "gameId": "0022500001",
+  "gameDateGameId": "2025-10-22#0022500001",
+  "gameDate": "2025-10-22",
   "matchup": "LAL vs. BOS",
   "winLoss": "W",
   "minutes": "35:28",
   "minutesDecimal": 35.47,
+  "seasonYear": "2025-26",
   "pts": 28,
   "fgm": 10,
   "fga": 20,
-  "fg2m": 7,
-  "fg2a": 12,
+  "fgPct": 0.5,
   "fg3m": 3,
   "fg3a": 8,
+  "fg3Pct": 0.375,
   "ftm": 5,
   "fta": 6,
+  "ftPct": 0.833,
   "oreb": 2,
   "dreb": 8,
   "reb": 10,
@@ -372,7 +393,15 @@ If game leaders need strict descending order, store a second sortable numeric fi
   "blk": 0,
   "blka": 1,
   "pf": 2,
-  "pfd": 5
+  "pfd": 5,
+  "plusMinus": 12,
+  "nbaFantasyPts": 58.5,
+  "wnbaFantasyPts": 58.0,
+  "dd2": 1,
+  "td3": 0,
+  "availableFlag": 1,
+  "minSec": "35:28",
+  "teamCount": 1
 }
 ```
 
@@ -524,20 +553,20 @@ Use cases:
 
 ## Requirement Coverage
 
-| MVP requirement          | Table                         | Fields                                                           |
-| ------------------------ | ----------------------------- | ---------------------------------------------------------------- |
+| MVP requirement          | Table                         | Fields                                                          |
+| ------------------------ | ----------------------------- | --------------------------------------------------------------- |
 | Full NBA calendar        | `nba_games`                   | `season`, `gameDateEst`, `gameDateTimeEst`, teams, scores, state |
-| Past game result         | `nba_games`                   | `gameStatus`, `homeTeamScore`, `awayTeamScore`                   |
-| Team names               | `nba_teams`                   | `teamName`, `teamAbbreviation`, `nickname`, `city`               |
-| Player names             | `nba_players`                 | `firstName`, `lastName`, `displayName`                           |
-| Position                 | `nba_players`                 | `position`                                                       |
-| Nationality              | `nba_players`                 | `country`                                                        |
-| Jersey                   | `nba_players`                 | `jerseyNumber`                                                   |
-| Height                   | `nba_players`                 | `height`                                                         |
-| Approximate availability | `nba_players`, `nba_injuries` | `injuryStatus`, injury history                                   |
-| Upcoming opponents       | `nba_games`                   | derived by `teamId` + future games                               |
-| Per-game stats           | `nba_player_game_stats`       | boxscore fields                                                  |
-| Season totals            | `nba_player_season_stats`     | totals and optional averages                                     |
+| Past game result         | `nba_games`                   | `gameStatus`, `homeTeamScore`, `awayTeamScore`                  |
+| Team names               | `nba_teams`                   | `teamName`, `teamAbbreviation`, `nickname`, `city`              |
+| Player names             | `nba_players`                 | `firstName`, `lastName`, `displayName`                          |
+| Position                 | `nba_players`                 | `position`                                                      |
+| Nationality              | `nba_players`                 | `country`                                                       |
+| Jersey                   | `nba_players`                 | `jerseyNumber`                                                  |
+| Height                   | `nba_players`                 | `height`                                                        |
+| Approximate availability | `nba_players`, `nba_injuries` | `injuryStatus`, injury history                                  |
+| Upcoming opponents       | `nba_games`                   | derived by `teamId` + future games                              |
+| Per-game stats           | `nba_player_game_stats`       | boxscore fields                                                 |
+| Season totals            | `nba_player_season_stats`     | totals and optional averages                                    |
 
 ---
 
